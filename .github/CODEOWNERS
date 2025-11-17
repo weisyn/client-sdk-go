@@ -1,0 +1,24 @@
+# 代码所有者文件
+# 定义哪些文件/目录需要哪些维护者审查
+
+# 全局所有者（所有文件）
+* @weisyn
+
+# 核心模块
+/client/ @weisyn
+/services/ @weisyn
+/wallet/ @weisyn
+
+# 文档
+/docs/ @weisyn
+README.md @weisyn
+CONTRIBUTING.md @weisyn
+
+# 测试
+/test/ @weisyn
+
+# 配置文件
+go.mod @weisyn
+go.sum @weisyn
+.github/ @weisyn
+

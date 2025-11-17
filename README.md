@@ -4,6 +4,8 @@ WES 区块链客户端开发工具包 - Go 语言版本
 
 [![Go Version](https://img.shields.io/badge/go-1.24+-blue.svg)](https://golang.org)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/weisyn/client-sdk-go)](https://goreportcard.com/report/github.com/weisyn/client-sdk-go)
+[![GoDoc](https://godoc.org/github.com/weisyn/client-sdk-go?status.svg)](https://godoc.org/github.com/weisyn/client-sdk-go)
 
 ## 📦 简介
 

@@ -1,0 +1,18 @@
+# 资助配置文件
+# 用于在 GitHub 仓库页面显示资助按钮
+
+# 可以配置的资助平台
+# github: [username]  # 替换为实际的 GitHub Sponsors 用户名
+# patreon: [username]
+# open_collective: [username]
+# ko_fi: [username]
+# tidelift: [platform]/[package-name]
+# community_bridge: [project-name]
+# liberapay: [username]
+# issuehunt: [username]
+# otechie: [username]
+# lfx_crowdfunding: [project-name]
+# custom: ['https://weisyn.com', 'https://github.com/sponsors/weisyn']
+
+custom: ['https://weisyn.com']
+
