@@ -3,29 +3,31 @@ package governance
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"strings"
 
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+
+	"github.com/weisyn/client-sdk-go/utils"
 	"github.com/weisyn/client-sdk-go/wallet"
 )
 
 // vote 投票实现
 //
-// ⚠️ **当前实现说明**：
-// 当前节点没有提供专门的投票 JSON-RPC 方法（如 `wes_vote`）。
+// **架构说明**：
+// Vote 业务语义在 SDK 层，通过查询 UTXO、构建交易实现。
+// 投票使用 StateOutput + SingleKeyLock 锁定条件。
 // 
-// **理想流程**（待实现）：
-// 1. 调用节点业务服务API构建投票交易
-//    - 需要节点提供 `wes_vote` JSON-RPC 方法
-//    - 或通过合约调用实现（需要 Governance 合约地址）
-// 2. 使用钱包签名交易
+// **流程**：
+// 1. 调用 `buildVoteTransaction` 在 SDK 层构建未签名交易
+// 2. 使用 Wallet 签名未签名交易
 // 3. 调用 `wes_sendRawTransaction` 提交已签名交易
 //
-// **参考实现**：
-// - `contract-sdk-go/helpers/governance/service.go` - 业务逻辑实现
-//
-// **当前限制**：
-// - 节点可能没有提供 `wes_vote` API
-// - 需要确认是否通过合约调用实现（需要 Governance 合约地址）
+// **注意**：
+// - SDK 层使用 `wes_getUTXO` 查询 UTXO，使用 `wes_buildTransaction` 构建交易
+// - 不需要节点提供 `wes_vote` API（业务语义在 SDK 层实现）
 func (s *governanceService) vote(ctx context.Context, req *VoteRequest, wallets ...wallet.Wallet) (*VoteResult, error) {
 	// 1. 参数验证
 	if err := s.validateVoteRequest(req); err != nil {
@@ -43,16 +45,120 @@ func (s *governanceService) vote(ctx context.Context, req *VoteRequest, wallets 
 		return nil, fmt.Errorf("wallet address does not match voter address")
 	}
 
-	// 4. TODO: 调用节点API构建投票交易
-	// 当前节点可能没有提供投票相关的 JSON-RPC 方法
-	// 需要：
-	//   a) 节点提供业务服务API（如 `wes_vote`）- 推荐方案
-	//   b) 使用 Wallet 签名未签名交易
-	//   c) 调用 wes_sendRawTransaction 提交
-	//   d) 或者通过合约调用实现（需要 Governance 合约地址）
+	// 4. 在 SDK 层构建 DraftJSON（不直接构建交易）
+	draftJSON, inputIndex, err := buildVoteDraft(
+		ctx,
+		s.client,
+		req.Voter,
+		req.ProposalID,
+		req.Choice,
+		req.VoteWeight,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("build vote draft failed: %w", err)
+	}
 
-	// 临时返回错误，提示需要实现
-	return nil, fmt.Errorf("vote not implemented yet: requires node API support (wes_vote) or contract call")
+	// 5. 调用 wes_computeSignatureHashFromDraft 获取签名哈希
+	hashParams := map[string]interface{}{
+		"draft":        json.RawMessage(draftJSON),
+		"input_index":  inputIndex,
+		"sighash_type": "SIGHASH_ALL",
+	}
+	hashResult, err := s.client.Call(ctx, "wes_computeSignatureHashFromDraft", hashParams)
+	if err != nil {
+		return nil, fmt.Errorf("compute signature hash failed: %w", err)
+	}
+
+	hashMap, ok := hashResult.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response format from wes_computeSignatureHashFromDraft")
+	}
+	hashHex, ok := hashMap["hash"].(string)
+	if !ok || hashHex == "" {
+		return nil, fmt.Errorf("missing hash in wes_computeSignatureHashFromDraft response")
+	}
+
+	// 同时获取对应的 unsignedTx，确保后续 finalize 使用同一份交易
+	unsignedTxHex, _ := hashMap["unsignedTx"].(string)
+
+	hashBytes, err := hex.DecodeString(strings.TrimPrefix(hashHex, "0x"))
+	if err != nil {
+		return nil, fmt.Errorf("decode signature hash failed: %w", err)
+	}
+
+	// 6. 使用 Wallet 对哈希进行签名
+	sigBytes, err := w.SignHash(hashBytes)
+	if err != nil {
+		return nil, fmt.Errorf("sign hash failed: %w", err)
+	}
+
+	// 7. 获取压缩公钥
+	priv := w.PrivateKey()
+	if priv == nil {
+		return nil, fmt.Errorf("wallet private key is nil")
+	}
+	pubCompressed := ethcrypto.CompressPubkey(&priv.PublicKey)
+
+	// 8. 调用 wes_finalizeTransactionFromDraft 生成带 SingleKeyProof 的交易
+	finalizeParams := map[string]interface{}{
+		"draft":        json.RawMessage(draftJSON),
+		"unsignedTx":   unsignedTxHex,
+		"input_index":  inputIndex,
+		"sighash_type": "SIGHASH_ALL",
+		"pubkey":       "0x" + hex.EncodeToString(pubCompressed),
+		"signature":    "0x" + hex.EncodeToString(sigBytes),
+	}
+	finalResult, err := s.client.Call(ctx, "wes_finalizeTransactionFromDraft", finalizeParams)
+	if err != nil {
+		return nil, fmt.Errorf("finalize transaction from draft failed: %w", err)
+	}
+
+	finalMap, ok := finalResult.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response format from wes_finalizeTransactionFromDraft")
+	}
+
+	txHex, ok := finalMap["tx"].(string)
+	if !ok || txHex == "" {
+		return nil, fmt.Errorf("missing tx in wes_finalizeTransactionFromDraft response")
+	}
+
+	// 9. 提交交易
+	sendResult, err := s.client.SendRawTransaction(ctx, txHex)
+	if err != nil {
+		return nil, fmt.Errorf("send raw transaction failed: %w", err)
+	}
+
+	if !sendResult.Accepted {
+		return nil, fmt.Errorf("transaction rejected: %s", sendResult.Reason)
+	}
+
+	// 7. 解析交易结果，提取 VoteID
+	voteID := ""
+	parsedTx, err := utils.FetchAndParseTx(ctx, s.client, sendResult.TxHash)
+	if err == nil && parsedTx != nil {
+		// 查找 StateOutput（投票通常使用 StateOutput）
+		stateOutputs := utils.FindStateOutputs(parsedTx.Outputs)
+		if len(stateOutputs) > 0 {
+			// 使用第一个 StateOutput 的 stateID 或 outpoint 作为 VoteID
+			if len(stateOutputs[0].StateID) > 0 {
+				voteID = hex.EncodeToString(stateOutputs[0].StateID)
+			} else {
+				voteID = stateOutputs[0].Outpoint
+			}
+		} else {
+			// 如果没有 StateOutput，使用第一个输出的 outpoint
+			if len(parsedTx.Outputs) > 0 {
+				voteID = parsedTx.Outputs[0].Outpoint
+			}
+		}
+	}
+
+	return &VoteResult{
+		VoteID:  voteID,
+		TxHash:  sendResult.TxHash,
+		Success: true,
+	}, nil
 }
 
 // validateVoteRequest 验证投票请求
@@ -82,23 +188,18 @@ func (s *governanceService) validateVoteRequest(req *VoteRequest) error {
 
 // updateParam 更新参数实现
 //
-// ⚠️ **当前实现说明**：
-// 当前节点没有提供专门的更新参数 JSON-RPC 方法（如 `wes_updateParam`）。
+// **架构说明**：
+// UpdateParam 业务语义在 SDK 层，通过创建 StateOutput 实现。
+// 更新参数通常需要治理投票通过，可能需要先创建提案。
 // 
-// **理想流程**（待实现）：
-// 1. 调用节点业务服务API构建更新参数交易
-//    - 需要节点提供 `wes_updateParam` JSON-RPC 方法
-//    - 或通过合约调用实现（需要 Governance 合约地址）
-// 2. 使用钱包签名交易（可能需要多方签名）
+// **流程**：
+// 1. 创建参数更新 StateOutput（类似 Propose）
+// 2. 使用 Wallet 签名交易
 // 3. 调用 `wes_sendRawTransaction` 提交已签名交易
 //
-// **参考实现**：
-// - `contract-sdk-go/helpers/governance/service.go` - 业务逻辑实现
-//
-// **当前限制**：
-// - 节点可能没有提供 `wes_updateParam` API
+// **注意**：
 // - 更新参数通常需要治理投票通过，可能需要先创建提案
-// - 需要确认是否通过合约调用实现（需要 Governance 合约地址）
+// - 当前实现简化：直接创建参数更新 StateOutput
 func (s *governanceService) updateParam(ctx context.Context, req *UpdateParamRequest, wallets ...wallet.Wallet) (*UpdateParamResult, error) {
 	// 1. 参数验证
 	if err := s.validateUpdateParamRequest(req); err != nil {
@@ -116,17 +217,105 @@ func (s *governanceService) updateParam(ctx context.Context, req *UpdateParamReq
 		return nil, fmt.Errorf("wallet address does not match proposer address")
 	}
 
-	// 4. TODO: 调用节点API构建更新参数交易
-	// 当前节点可能没有提供更新参数相关的 JSON-RPC 方法
-	// 需要：
-	//   a) 节点提供业务服务API（如 `wes_updateParam`）- 推荐方案
-	//   b) 使用 Wallet 签名未签名交易
-	//   c) 调用 wes_sendRawTransaction 提交
-	//   d) 或者通过合约调用实现（需要 Governance 合约地址）
-	//   e) 注意：更新参数通常需要治理投票通过，可能需要先创建提案
+	// 4. 在 SDK 层构建 DraftJSON（不直接构建交易）
+	// TODO: 需要从配置或参数获取验证者地址列表
+	// 当前简化：使用提案者地址作为验证者（实际应该查询验证者列表）
+	validatorAddresses := [][]byte{req.Proposer} // 临时：使用提案者地址
+	threshold := uint32(1)                        // 临时：需要1个签名
 
-	// 临时返回错误，提示需要实现
-	return nil, fmt.Errorf("update param not implemented yet: requires node API support (wes_updateParam) or contract call")
+	draftJSON, inputIndex, err := buildUpdateParamDraft(
+		ctx,
+		s.client,
+		req.Proposer,
+		req.ParamKey,
+		req.ParamValue,
+		validatorAddresses,
+		threshold,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("build update param draft failed: %w", err)
+	}
+
+	// 5. 调用 wes_computeSignatureHashFromDraft 获取签名哈希
+	hashParams := map[string]interface{}{
+		"draft":        json.RawMessage(draftJSON),
+		"input_index":  inputIndex,
+		"sighash_type": "SIGHASH_ALL",
+	}
+	hashResult, err := s.client.Call(ctx, "wes_computeSignatureHashFromDraft", hashParams)
+	if err != nil {
+		return nil, fmt.Errorf("compute signature hash failed: %w", err)
+	}
+
+	hashMap, ok := hashResult.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response format from wes_computeSignatureHashFromDraft")
+	}
+	hashHex, ok := hashMap["hash"].(string)
+	if !ok || hashHex == "" {
+		return nil, fmt.Errorf("missing hash in wes_computeSignatureHashFromDraft response")
+	}
+
+	// 同时获取对应的 unsignedTx，确保后续 finalize 使用同一份交易
+	unsignedTxHex, _ := hashMap["unsignedTx"].(string)
+
+	hashBytes, err := hex.DecodeString(strings.TrimPrefix(hashHex, "0x"))
+	if err != nil {
+		return nil, fmt.Errorf("decode signature hash failed: %w", err)
+	}
+
+	// 6. 使用 Wallet 对哈希进行签名
+	sigBytes, err := w.SignHash(hashBytes)
+	if err != nil {
+		return nil, fmt.Errorf("sign hash failed: %w", err)
+	}
+
+	// 7. 获取压缩公钥
+	priv := w.PrivateKey()
+	if priv == nil {
+		return nil, fmt.Errorf("wallet private key is nil")
+	}
+	pubCompressed := ethcrypto.CompressPubkey(&priv.PublicKey)
+
+	// 8. 调用 wes_finalizeTransactionFromDraft 生成带 SingleKeyProof 的交易
+	finalizeParams := map[string]interface{}{
+		"draft":        json.RawMessage(draftJSON),
+		"unsignedTx":   unsignedTxHex,
+		"input_index":  inputIndex,
+		"sighash_type": "SIGHASH_ALL",
+		"pubkey":       "0x" + hex.EncodeToString(pubCompressed),
+		"signature":    "0x" + hex.EncodeToString(sigBytes),
+	}
+	finalResult, err := s.client.Call(ctx, "wes_finalizeTransactionFromDraft", finalizeParams)
+	if err != nil {
+		return nil, fmt.Errorf("finalize transaction from draft failed: %w", err)
+	}
+
+	finalMap, ok := finalResult.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response format from wes_finalizeTransactionFromDraft")
+	}
+
+	txHex, ok := finalMap["tx"].(string)
+	if !ok || txHex == "" {
+		return nil, fmt.Errorf("missing tx in wes_finalizeTransactionFromDraft response")
+	}
+
+	// 9. 提交交易
+	sendResult, err := s.client.SendRawTransaction(ctx, txHex)
+	if err != nil {
+		return nil, fmt.Errorf("send raw transaction failed: %w", err)
+	}
+
+	if !sendResult.Accepted {
+		return nil, fmt.Errorf("transaction rejected: %s", sendResult.Reason)
+	}
+
+	// 7. 返回结果
+	return &UpdateParamResult{
+		TxHash:  sendResult.TxHash,
+		Success: true,
+	}, nil
 }
 
 // validateUpdateParamRequest 验证更新参数请求

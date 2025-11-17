@@ -572,13 +572,31 @@ Apache-2.0 License
 
 ## 🔗 相关资源
 
-- [WES 官方文档](https://github.com/weisyn/weisyn-core)
-- [Contract SDK](../contract-sdk-go/README.md) - 合约开发 SDK
-- [架构设计文档](../SDK_DESIGN.md) - SDK 设计文档
-- [架构原则文档](../SDK_ARCHITECTURE_PRINCIPLES.md) - 架构原则
+### WES 生态
+
+- [WES 主项目](https://github.com/weisyn/weisyn-core) - WES 区块链核心实现
+- [Contract SDK (Go)](https://github.com/weisyn/contract-sdk-go) - 智能合约开发 SDK（Go/Rust/AS/C）
+- [Client SDK (Go)](https://github.com/weisyn/client-sdk-go) - 客户端 SDK（Go 版本）⭐ 当前仓库
+- [Client SDK (JS/TS)](https://github.com/weisyn/client-sdk-js) - 客户端 SDK（JavaScript/TypeScript 版本）
+
+### SDK 对比
+
+| 特性 | Go SDK | JS/TS SDK | 说明 |
+|------|--------|-----------|------|
+| **语言** | Go | JavaScript/TypeScript | - |
+| **环境** | Node.js/服务器 | 浏览器/Node.js | - |
+| **Token 服务** | ✅ 完整 | ✅ 完整 | 转账、批量转账、铸造、销毁、余额查询 |
+| **Wallet** | ✅ 完整 | ✅ 完整 | 密钥生成、签名、地址派生 |
+| **Staking** | ⚠️ 骨架 | ⚠️ 骨架 | 接口完整，待节点 API 支持 |
+| **Market** | ⚠️ 骨架 | ⚠️ 骨架 | 接口完整，待节点 API 支持 |
+| **Governance** | ⚠️ 骨架 | ⚠️ 骨架 | 接口完整，待节点 API 支持 |
+| **Resource** | ⚠️ 部分 | ⚠️ 部分 | 查询已实现，部署待完善 |
+| **仓库** | [client-sdk-go](https://github.com/weisyn/client-sdk-go) | [client-sdk-js](https://github.com/weisyn/client-sdk-js) | - |
+
+> ⚠️ **说明**：`⚠️ 骨架` 表示接口和类型定义完整，但实际实现需要节点提供对应的 JSON-RPC API。详细状态分析请参考 JS/TS SDK 的 [SDK 状态分析文档](https://github.com/weisyn/client-sdk-js/blob/main/docs/SDK_STATUS_ANALYSIS.md)。
+
+> 💡 **提示**：两个 SDK 提供相同的业务语义接口，可以根据项目需求选择合适的语言版本。
 
 ---
-
-**注意**: 此 SDK 当前在主仓库的 `_sdks/` 目录下开发，待稳定后将提取到独立仓库 `github.com/weisyn/client-sdk-go`。
 
 **最后更新**: 2025-01-23

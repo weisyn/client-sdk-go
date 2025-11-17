@@ -29,9 +29,13 @@ services/token/
   ├─> balance.go          # GetBalance 实现
   └─> tx_builder.go       # 交易构建逻辑
       │
-      ├─> buildTransferTransaction()      ✅
-      ├─> buildBatchTransferTransaction() ✅
-      └─> buildBurnTransaction()          ✅
+      ├─> buildTransferDraft()            ✅ (新路径)
+      ├─> buildBatchTransferDraft()       ✅ (新路径)
+      ├─> buildBurnDraft()                ✅ (新路径)
+      │
+      ├─> buildTransferTransaction()      ⚠️ 已废弃
+      ├─> buildBatchTransferTransaction() ⚠️ 已废弃
+      └─> buildBurnTransaction()          ⚠️ 已废弃
 ```
 
 ### 服务调用流程
@@ -56,19 +60,27 @@ Token Service (services/token/)
   ├─> 2. Wallet 验证
   ├─> 3. 业务逻辑
   │   │
-  │   ├─> Transfer: SDK 层构建交易
-  │   │   └─> buildTransferTransaction()
+  │   ├─> Transfer: 新路径（推荐）
+  │   │   ├─> buildTransferDraft()
+  │   │   ├─> wes_computeSignatureHashFromDraft()
+  │   │   ├─> Wallet.SignHash()
+  │   │   └─> wes_finalizeTransactionFromDraft()
   │   │
-  │   ├─> BatchTransfer: SDK 层构建交易
-  │   │   └─> buildBatchTransferTransaction()
+  │   ├─> BatchTransfer: 新路径（推荐）
+  │   │   ├─> buildBatchTransferDraft()
+  │   │   ├─> wes_computeSignatureHashFromDraft() (每个输入)
+  │   │   ├─> Wallet.SignHash() (每个输入)
+  │   │   └─> wes_finalizeTransactionFromDraft() (多输入签名)
   │   │
   │   ├─> Mint: 调用合约
   │   │   └─> wes_callContract(return_unsigned_tx=true)
   │   │
-  │   └─> Burn: SDK 层构建交易
-  │       └─> buildBurnTransaction()
+  │   └─> Burn: 新路径（推荐）
+  │       ├─> buildBurnDraft()
+  │       ├─> wes_computeSignatureHashFromDraft()
+  │       ├─> Wallet.SignHash()
+  │       └─> wes_finalizeTransactionFromDraft()
   │
-  ├─> 4. Wallet 签名
   └─> 5. 提交交易 (wes_sendRawTransaction)
 ```
 
@@ -89,10 +101,9 @@ Token Service (services/token/)
    ├─> 过滤匹配 tokenID 的 UTXO
    └─> 选择足够的 UTXO
    
-2. 计算手续费和找零
+2. 计算找零（手续费由链上结算）
    │
-   ├─> 手续费 = 金额 × 0.03%
-   └─> 找零 = UTXO金额 - 转账金额 - 手续费
+   └─> 找零 = UTXO金额 - 转账金额
    
 3. 构建交易草稿 (DraftJSON)
    │
@@ -106,7 +117,7 @@ Token Service (services/token/)
    
 5. Wallet 签名
    │
-   └─> wallet.SignTransaction()
+   └─> wallet.SignHash() / SignTransaction()（取决于具体路径，推荐使用 SignHash 结合 Draft + wes_computeSignatureHashFromDraft）
    
 6. 提交交易
    │
@@ -151,10 +162,9 @@ result, err := tokenService.Transfer(ctx, &token.TransferRequest{
    ├─> totalInputAmount
    └─> totalOutputAmount
 
-4. 计算手续费和找零
+4. 计算找零（手续费由链上结算）
    │
-   ├─> 手续费 = 总输出 × 0.03%
-   └─> 找零 = 总输入 - 总输出 - 手续费
+   └─> 找零 = 总输入 - 总输出
 
 5. 构建交易草稿 (DraftJSON)
    │
@@ -162,9 +172,10 @@ result, err := tokenService.Transfer(ctx, &token.TransferRequest{
    ├─> outputs: [所有转账输出, 找零输出(如果有)]
    └─> sign_mode: "defer_sign"
 
-6. 调用 wes_buildTransaction
-7. Wallet 签名
-8. 提交交易
+6. 为每个输入调用 wes_computeSignatureHashFromDraft 获取签名哈希
+7. 使用 Wallet.SignHash() 签名每个哈希
+8. 调用 wes_finalizeTransactionFromDraft 使用多输入签名模式生成带 SingleKeyProof 的交易
+9. 提交交易 (wes_sendRawTransaction)
 ```
 
 **使用示例**:
@@ -239,10 +250,9 @@ result, err := tokenService.Mint(ctx, &token.MintRequest{
    ├─> 过滤匹配 tokenID 的 UTXO
    └─> 选择足够的 UTXO
 
-2. 计算手续费和找零
+2. 计算找零（手续费由链上结算）
    │
-   ├─> 手续费 = 销毁金额 × 0.03%
-   └─> 找零 = UTXO金额 - 销毁金额 - 手续费
+   └─> 找零 = UTXO金额 - 销毁金额
 
 3. 构建交易草稿 (DraftJSON)
    │
@@ -250,9 +260,10 @@ result, err := tokenService.Mint(ctx, &token.MintRequest{
    ├─> outputs: [找零输出(如果有)]
    └─> sign_mode: "defer_sign"
 
-4. 调用 wes_buildTransaction
-5. Wallet 签名
-6. 提交交易
+4. 调用 wes_computeSignatureHashFromDraft 获取签名哈希
+5. 使用 Wallet.SignHash() 签名哈希
+6. 调用 wes_finalizeTransactionFromDraft 生成带 SingleKeyProof 的交易
+7. 提交交易 (wes_sendRawTransaction)
 ```
 
 **使用示例**:
@@ -314,32 +325,21 @@ balance, err := tokenService.GetBalance(ctx, address, tokenID)
    └─> UTXO金额 >= 所需金额
 ```
 
-### 3. 手续费计算
+### 3. 手续费与找零处理
 
 ```
 ┌─────────────────────────────────────────┐
-│        手续费计算规则                    │
+│        手续费与找零处理规则              │
 └─────────────────────────────────────────┘
 
-手续费率: 0.03% (万分之三)
+手续费:
+  - 实际手续费由链上根据「输入金额 - 输出金额」自动结算
+  - 对于普通转账，手续费等效地从接收侧体现（接收者实际到账略小于名义转账金额）
+  - SDK 不在本地显式计算或扣减手续费
 
-计算方式:
-  手续费 = 金额 × 3 / 10000
-
-示例:
-  转账 1000000 → 手续费 = 300
-  转账 10000   → 手续费 = 3
-```
-
-### 4. 找零处理
-
-```
-┌─────────────────────────────────────────┐
-│        找零处理规则                      │
-└─────────────────────────────────────────┘
-
-计算:
-  找零 = UTXO金额 - 转账金额 - 手续费
+找零:
+  - 找零 = 输入UTXO金额 - 转账/销毁金额（单笔）
+  - 找零 = 总输入金额 - 总输出金额（批量）
 
 规则:
   - 如果找零 > 0，创建找零输出
@@ -379,9 +379,62 @@ balance, err := tokenService.GetBalance(ctx, address, tokenID)
 
 ### 交易构建函数
 
-#### buildTransferTransaction
+#### buildTransferDraft
 
-**功能**: 构建单笔转账交易
+**功能**: 构建单笔转账交易草稿（DraftJSON）
+
+**参数**:
+- `ctx`: 上下文
+- `client`: 客户端
+- `fromAddress`: 发送方地址
+- `toAddress`: 接收方地址
+- `amount`: 转账金额
+- `tokenID`: 代币ID（可选）
+
+**返回**: 
+- DraftJSON 字节数组
+- 输入索引（用于签名）
+
+---
+
+#### buildBatchTransferDraft
+
+**功能**: 构建批量转账交易草稿（DraftJSON）
+
+**参数**:
+- `ctx`: 上下文
+- `client`: 客户端
+- `fromAddress`: 发送方地址
+- `transfers`: 转账列表（**必须使用同一个 tokenID**）
+
+**返回**: 
+- DraftJSON 字节数组
+- 输入索引列表（用于多输入签名）
+
+---
+
+#### buildBurnDraft
+
+**功能**: 构建销毁交易草稿（DraftJSON）
+
+**参数**:
+- `ctx`: 上下文
+- `client`: 客户端
+- `fromAddress`: 发送方地址
+- `amount`: 销毁金额
+- `tokenID`: 代币ID
+
+**返回**: 
+- DraftJSON 字节数组
+- 输入索引（用于签名）
+
+---
+
+#### buildTransferTransaction ⚠️ 已废弃
+
+**功能**: 构建单笔转账交易（旧路径）
+
+**状态**: ⚠️ 已废弃，请使用 `buildTransferDraft` + `wes_computeSignatureHashFromDraft` + `wes_finalizeTransactionFromDraft` 路径
 
 **参数**:
 - `ctx`: 上下文
@@ -393,9 +446,15 @@ balance, err := tokenService.GetBalance(ctx, address, tokenID)
 
 **返回**: 未签名交易（字节数组）
 
-#### buildBatchTransferTransaction
+**迁移指南**: 参见 [MIGRATION_GUIDE.md](../../MIGRATION_GUIDE.md)
 
-**功能**: 构建批量转账交易
+---
+
+#### buildBatchTransferTransaction ⚠️ 已废弃
+
+**功能**: 构建批量转账交易（旧路径）
+
+**状态**: ⚠️ 已废弃，请使用 `buildBatchTransferDraft` + `wes_computeSignatureHashFromDraft` + `wes_finalizeTransactionFromDraft` 路径
 
 **参数**:
 - `ctx`: 上下文
@@ -405,9 +464,15 @@ balance, err := tokenService.GetBalance(ctx, address, tokenID)
 
 **返回**: 未签名交易（字节数组）
 
-#### buildBurnTransaction
+**迁移指南**: 参见 [MIGRATION_GUIDE.md](../../MIGRATION_GUIDE.md)
 
-**功能**: 构建销毁交易
+---
+
+#### buildBurnTransaction ⚠️ 已废弃
+
+**功能**: 构建销毁交易（旧路径）
+
+**状态**: ⚠️ 已废弃，请使用 `buildBurnDraft` + `wes_computeSignatureHashFromDraft` + `wes_finalizeTransactionFromDraft` 路径
 
 **参数**:
 - `ctx`: 上下文
@@ -417,6 +482,8 @@ balance, err := tokenService.GetBalance(ctx, address, tokenID)
 - `tokenID`: 代币ID
 
 **返回**: 未签名交易（字节数组）
+
+**迁移指南**: 参见 [MIGRATION_GUIDE.md](../../MIGRATION_GUIDE.md)
 
 ---
 

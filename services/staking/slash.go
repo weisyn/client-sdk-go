@@ -9,23 +9,24 @@ import (
 
 // slash 罚没实现
 //
-// ⚠️ **当前实现说明**：
-// 当前节点没有提供专门的罚没 JSON-RPC 方法（如 `wes_slash`）。
-// 
-// **理想流程**（待实现）：
-// 1. 调用节点业务服务API构建罚没交易
-//    - 需要节点提供 `wes_slash` JSON-RPC 方法
-//    - 或通过合约调用实现（需要合约地址）
-// 2. 使用钱包签名交易（可能需要多方签名）
-// 3. 调用 `wes_sendRawTransaction` 提交已签名交易
+// **架构说明**：
+// Slash（罚没）是 Staking 系统的风控机制，需要明确的业务规则和合约支持。
 //
-// **参考实现**：
-// - `contract-sdk-go/helpers/staking/slash.go` - 业务逻辑实现
+// **当前状态**：
+// - Slash 功能需要治理规则 / Slash 合约支持，属于后续阶段能力
+// - 当前 SDK 保留 Slash 接口，但实现为"架构预留、业务未定义"
 //
-// **当前限制**：
-// - 节点可能没有提供 `wes_slash` API
-// - 罚没通常需要多方验证，可能需要治理系统支持
-// - 需要确认是否通过合约调用实现（需要合约地址）
+// **未来实现路径**（需要治理规则 / Slash 合约确定后）：
+// 1. 如果链上部署了 Slash 合约：
+//    - SDK 调用 `wes_callContract` → `method: "slash"`
+//    - 参数包括：被罚验证者地址、罚没金额、证据/理由
+//    - 合约内部根据治理逻辑构建具体消费的 UTXO & 接收方
+// 2. 如果通过治理系统实现：
+//    - 需要多方签名（ThresholdLock）
+//    - 通过 Governance 服务创建 Slash 提案
+//
+// **参考**：
+// - `contract-sdk-go/helpers/staking/slash.go` - 业务逻辑实现（待确定）
 func (s *stakingService) slash(ctx context.Context, req *SlashRequest, wallets ...wallet.Wallet) (*SlashResult, error) {
 	// 1. 参数验证
 	if err := s.validateSlashRequest(req); err != nil {
@@ -38,17 +39,10 @@ func (s *stakingService) slash(ctx context.Context, req *SlashRequest, wallets .
 		return nil, fmt.Errorf("wallet is required")
 	}
 
-	// 3. TODO: 调用节点API构建罚没交易
-	// 当前节点可能没有提供罚没相关的 JSON-RPC 方法
-	// 需要：
-	//   a) 节点提供业务服务API（如 `wes_slash`）- 推荐方案
-	//   b) 使用 Wallet 签名未签名交易（可能需要多方签名）
-	//   c) 调用 wes_sendRawTransaction 提交
-	//   d) 或者通过合约调用实现（需要合约地址）
-	//   e) 注意：罚没通常需要多方验证，可能需要治理系统支持
-
-	// 临时返回错误，提示需要实现
-	return nil, fmt.Errorf("slash not implemented yet: requires node API support (wes_slash) or contract call")
+	// 3. 当前实现：架构预留，业务未定义
+	// Slash 需要治理规则 / Slash 合约支持，属于后续阶段能力
+	// 当前返回明确的错误，提示需要治理规则 / Slash 合约
+	return nil, fmt.Errorf("slash not implemented: requires governance rules or slash contract (architecture reserved, business logic undefined)")
 }
 
 // validateSlashRequest 验证罚没请求

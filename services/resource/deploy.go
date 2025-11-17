@@ -3,7 +3,10 @@ package resource
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
+	"os"
 
 	"github.com/weisyn/client-sdk-go/wallet"
 )
@@ -44,16 +47,72 @@ func (s *resourceService) deployStaticResource(ctx context.Context, req *DeployS
 		return nil, fmt.Errorf("wallet address does not match from address")
 	}
 
-	// 4. TODO: 调用节点API部署静态资源
-	// 当前节点可能没有提供专门的静态资源部署 JSON-RPC 方法
-	// 需要：
-	//   a) 节点提供业务服务API（如 `wes_deployStaticResource`）- 推荐方案
-	//   b) 使用 Wallet 签名未签名交易
-	//   c) 调用 wes_sendRawTransaction 提交
-	//   d) 或者使用 `wes_deployContract` API（如果支持静态资源）
+	// 4. 读取静态资源文件
+	fileBytes, err := os.ReadFile(req.FilePath)
+	if err != nil {
+		return nil, fmt.Errorf("read file failed: %w", err)
+	}
 
-	// 临时返回错误，提示需要实现
-	return nil, fmt.Errorf("deploy static resource not implemented yet: requires node API support (wes_deployStaticResource) or use wes_deployContract")
+	// 5. Base64 编码文件内容
+	fileContentBase64 := base64.StdEncoding.EncodeToString(fileBytes)
+
+	// 6. 获取私钥（用于 API 调用）
+	privateKey := w.PrivateKey()
+	if privateKey == nil {
+		return nil, fmt.Errorf("wallet private key not available")
+	}
+	// 从 ECDSA 私钥中提取 D 值（32字节）
+	privateKeyBytes := privateKey.D.Bytes()
+	// 确保是32字节（可能需要填充）
+	if len(privateKeyBytes) < 32 {
+		padded := make([]byte, 32)
+		copy(padded[32-len(privateKeyBytes):], privateKeyBytes)
+		privateKeyBytes = padded
+	}
+	privateKeyHex := hex.EncodeToString(privateKeyBytes)
+
+	// 7. 调用 `wes_deployContract` API（静态资源可以作为特殊类型的合约）
+	// 注意：当前实现使用 wes_deployContract，如果未来有专门的 wes_deployStaticResource API，可以切换
+	deployParams := map[string]interface{}{
+		"private_key":  privateKeyHex,
+		"wasm_content": fileContentBase64, // 使用文件内容作为 wasm_content
+		"abi_version":  "v1",
+		"name":         req.FilePath, // 使用文件路径作为名称
+		"description":  fmt.Sprintf("Static resource: %s", req.MimeType),
+	}
+
+	result, err := s.client.Call(ctx, "wes_deployContract", []interface{}{deployParams})
+	if err != nil {
+		return nil, fmt.Errorf("call wes_deployContract failed: %w", err)
+	}
+
+	// 8. 解析结果
+	resultMap, ok := result.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response format from wes_deployContract")
+	}
+
+	success, _ := resultMap["success"].(bool)
+	if !success {
+		message, _ := resultMap["message"].(string)
+		return nil, fmt.Errorf("deploy static resource failed: %s", message)
+	}
+
+	contentHashStr, _ := resultMap["content_hash"].(string)
+	txHash, _ := resultMap["tx_hash"].(string)
+
+	// 9. 解析 contentHash
+	contentHash, err := hex.DecodeString(contentHashStr)
+	if err != nil {
+		return nil, fmt.Errorf("decode content hash failed: %w", err)
+	}
+
+	// 10. 返回结果
+	return &DeployStaticResourceResult{
+		ContentHash: contentHash,
+		TxHash:      txHash,
+		Success:     true,
+	}, nil
 }
 
 // validateDeployStaticResourceRequest 验证部署静态资源请求
@@ -111,17 +170,81 @@ func (s *resourceService) deployContract(ctx context.Context, req *DeployContrac
 		return nil, fmt.Errorf("wallet address does not match from address")
 	}
 
-	// 4. TODO: 调用节点 `wes_deployContract` API
-	// 当前节点提供了 `wes_deployContract` JSON-RPC 方法
-	// 需要：
-	//   a) 确认参数格式（参考 `internal/api/jsonrpc/methods/tx.go`）
-	//   b) 可能需要先上传 WASM 文件到节点（或直接传递文件内容）
-	//   c) 调用 `wes_deployContract` 获取未签名交易
-	//   d) 使用 Wallet 签名未签名交易
-	//   e) 调用 `wes_sendRawTransaction` 提交
+	// 4. 读取 WASM 文件
+	wasmBytes, err := os.ReadFile(req.WasmPath)
+	if err != nil {
+		return nil, fmt.Errorf("read WASM file failed: %w", err)
+	}
 
-	// 临时返回错误，提示需要实现
-	return nil, fmt.Errorf("deploy contract not implemented yet: requires integration with wes_deployContract API")
+	// 5. Base64 编码 WASM 内容
+	wasmContentBase64 := base64.StdEncoding.EncodeToString(wasmBytes)
+
+	// 6. 获取私钥（用于 API 调用）
+	privateKey := w.PrivateKey()
+	if privateKey == nil {
+		return nil, fmt.Errorf("wallet private key not available")
+	}
+	// 从 ECDSA 私钥中提取 D 值（32字节）
+	privateKeyBytes := privateKey.D.Bytes()
+	// 确保是32字节（可能需要填充）
+	if len(privateKeyBytes) < 32 {
+		padded := make([]byte, 32)
+		copy(padded[32-len(privateKeyBytes):], privateKeyBytes)
+		privateKeyBytes = padded
+	}
+	privateKeyHex := hex.EncodeToString(privateKeyBytes)
+
+	// 7. 调用 `wes_deployContract` API
+	// 注意：当前 API 需要 private_key，如果未来支持 return_unsigned_tx，可以改为使用 Wallet 签名
+	deployParams := map[string]interface{}{
+		"private_key":  privateKeyHex,
+		"wasm_content": wasmContentBase64,
+		"abi_version":  "v1", // 默认 ABI 版本
+		"name":         req.ContractName,
+		"description":  "", // 可选
+	}
+
+	// 如果有初始化参数，添加到 payload 中
+	if len(req.InitArgs) > 0 {
+		// InitArgs 是字节数组，需要 Base64 编码
+		initArgsBase64 := base64.StdEncoding.EncodeToString(req.InitArgs)
+		deployParams["init_args"] = initArgsBase64
+	}
+
+	result, err := s.client.Call(ctx, "wes_deployContract", []interface{}{deployParams})
+	if err != nil {
+		return nil, fmt.Errorf("call wes_deployContract failed: %w", err)
+	}
+
+	// 8. 解析结果
+	resultMap, ok := result.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response format from wes_deployContract")
+	}
+
+	success, _ := resultMap["success"].(bool)
+	if !success {
+		message, _ := resultMap["message"].(string)
+		return nil, fmt.Errorf("deploy contract failed: %s", message)
+	}
+
+	contentHashStr, _ := resultMap["content_hash"].(string)
+	txHash, _ := resultMap["tx_hash"].(string)
+
+	// 9. 解析 contentHash
+	contentHash, err := hex.DecodeString(contentHashStr)
+	if err != nil {
+		return nil, fmt.Errorf("decode content hash failed: %w", err)
+	}
+
+	// 10. 返回结果
+	// 注意：合约地址通常是 contentHash（32字节）
+	return &DeployContractResult{
+		ContractAddress: contentHash, // 使用 contentHash 作为合约地址
+		ContentHash:     contentHash,
+		TxHash:          txHash,
+		Success:         true,
+	}, nil
 }
 
 // validateDeployContractRequest 验证部署合约请求
@@ -179,16 +302,70 @@ func (s *resourceService) deployAIModel(ctx context.Context, req *DeployAIModelR
 		return nil, fmt.Errorf("wallet address does not match from address")
 	}
 
-	// 4. TODO: 调用节点API部署AI模型
-	// 当前节点可能没有提供专门的 AI 模型部署 JSON-RPC 方法
-	// 需要：
-	//   a) 节点提供业务服务API（如 `wes_deployAIModel`）- 推荐方案
-	//   b) 使用 Wallet 签名未签名交易
-	//   c) 调用 wes_sendRawTransaction 提交
-	//   d) 或者使用 `wes_deployContract` API（如果支持 ONNX 模型）
+	// 4. 读取 ONNX 模型文件
+	onnxBytes, err := os.ReadFile(req.ModelPath)
+	if err != nil {
+		return nil, fmt.Errorf("read ONNX model file failed: %w", err)
+	}
 
-	// 临时返回错误，提示需要实现
-	return nil, fmt.Errorf("deploy AI model not implemented yet: requires node API support (wes_deployAIModel) or use wes_deployContract")
+	// 5. Base64 编码 ONNX 内容
+	onnxContentBase64 := base64.StdEncoding.EncodeToString(onnxBytes)
+
+	// 6. 获取私钥（用于 API 调用）
+	privateKey := w.PrivateKey()
+	if privateKey == nil {
+		return nil, fmt.Errorf("wallet private key not available")
+	}
+	// 从 ECDSA 私钥中提取 D 值（32字节）
+	privateKeyBytes := privateKey.D.Bytes()
+	// 确保是32字节（可能需要填充）
+	if len(privateKeyBytes) < 32 {
+		padded := make([]byte, 32)
+		copy(padded[32-len(privateKeyBytes):], privateKeyBytes)
+		privateKeyBytes = padded
+	}
+	privateKeyHex := hex.EncodeToString(privateKeyBytes)
+
+	// 7. 调用 `wes_deployAIModel` API
+	deployParams := map[string]interface{}{
+		"private_key":  privateKeyHex,
+		"onnx_content": onnxContentBase64,
+		"name":         req.ModelName,
+		"description":  "", // 可选
+	}
+
+	result, err := s.client.Call(ctx, "wes_deployAIModel", []interface{}{deployParams})
+	if err != nil {
+		return nil, fmt.Errorf("call wes_deployAIModel failed: %w", err)
+	}
+
+	// 8. 解析结果
+	resultMap, ok := result.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response format from wes_deployAIModel")
+	}
+
+	success, _ := resultMap["success"].(bool)
+	if !success {
+		message, _ := resultMap["message"].(string)
+		return nil, fmt.Errorf("deploy AI model failed: %s", message)
+	}
+
+	contentHashStr, _ := resultMap["content_hash"].(string)
+	txHash, _ := resultMap["tx_hash"].(string)
+
+	// 9. 解析 contentHash
+	contentHash, err := hex.DecodeString(contentHashStr)
+	if err != nil {
+		return nil, fmt.Errorf("decode content hash failed: %w", err)
+	}
+
+	// 10. 返回结果
+	return &DeployAIModelResult{
+		ContentHash: contentHash,
+		TxHash:      txHash,
+		Success:     true,
+	}, nil
 }
 
 // validateDeployAIModelRequest 验证部署AI模型请求

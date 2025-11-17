@@ -118,17 +118,28 @@
 ```
 Token Service
     │
-    ├─> Transfer: SDK 层构建交易
-    │   └─> buildTransferTransaction() → wes_buildTransaction
+    ├─> Transfer: 新路径（推荐）
+    │   ├─> buildTransferDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
     │
-    ├─> BatchTransfer: SDK 层构建交易（同一 tokenID）
-    │   └─> buildBatchTransferTransaction() → wes_buildTransaction
+    ├─> BatchTransfer: 新路径（推荐）
+    │   ├─> buildBatchTransferDraft()
+    │   ├─> wes_computeSignatureHashFromDraft() (多输入)
+    │   └─> wes_finalizeTransactionFromDraft() (多输入签名)
     │
     ├─> Mint: 调用合约
     │   └─> wes_callContract(return_unsigned_tx=true)
     │
-    └─> Burn: SDK 层构建交易
-        └─> buildBurnTransaction() → wes_buildTransaction
+    └─> Burn: 新路径（推荐）
+        ├─> buildBurnDraft()
+        ├─> wes_computeSignatureHashFromDraft()
+        └─> wes_finalizeTransactionFromDraft()
+    
+    ⚠️ 旧路径已废弃（将在 v2.0.0 移除）:
+    - buildTransferTransaction()
+    - buildBatchTransferTransaction()
+    - buildBurnTransaction()
 ```
 
 **使用示例**:
@@ -158,15 +169,52 @@ result, err := tokenService.BatchTransfer(ctx, &token.BatchTransferRequest{
 ### 2. Staking 服务 ✅
 
 **路径**: `services/staking/`  
-**状态**: ✅ 基础结构完成
+**状态**: ✅ 已迁移到新架构（Draft+Hash+Finalize）
 
 **功能**:
-- ✅ **Stake** - 质押代币
-- ✅ **Unstake** - 解除质押
-- ✅ **Delegate** - 委托验证者
-- ✅ **Undelegate** - 取消委托
-- ✅ **ClaimReward** - 领取奖励
+- ✅ **Stake** - 质押代币（新路径）
+- ✅ **Unstake** - 解除质押（新路径）
+- ✅ **Delegate** - 委托验证者（新路径）
+- ✅ **Undelegate** - 取消委托（新路径）
+- ✅ **ClaimReward** - 领取奖励（新路径）
 - ✅ **Slash** - 罚没（治理功能）
+
+**架构说明**:
+```
+Staking Service
+    │
+    ├─> Stake: 新路径（推荐）
+    │   ├─> buildStakeDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> Unstake: 新路径（推荐）
+    │   ├─> buildUnstakeDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> Delegate: 新路径（推荐）
+    │   ├─> buildDelegateDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> Undelegate: 新路径（推荐）
+    │   ├─> buildUndelegateDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    └─> ClaimReward: 新路径（推荐）
+        ├─> buildClaimRewardDraft()
+        ├─> wes_computeSignatureHashFromDraft()
+        └─> wes_finalizeTransactionFromDraft()
+    
+    ⚠️ 旧路径已废弃（将在 v2.0.0 移除）:
+    - buildStakeTransaction()
+    - buildUnstakeTransaction()
+    - buildDelegateTransaction()
+    - buildUndelegateTransaction()
+    - buildClaimRewardTransaction()
+```
 
 **使用示例**:
 ```go
@@ -185,29 +233,91 @@ result, err := stakingService.Stake(ctx, &staking.StakeRequest{
 ### 3. Market 服务 ✅
 
 **路径**: `services/market/`  
-**状态**: ✅ 基础结构完成
+**状态**: ✅ 已迁移到新架构（Draft+Hash+Finalize）
 
 **功能**:
 - ✅ **SwapAMM** - AMM 代币交换
 - ✅ **AddLiquidity** - 添加流动性
 - ✅ **RemoveLiquidity** - 移除流动性
-- ✅ **CreateVesting** - 创建归属计划
-- ✅ **ClaimVesting** - 领取归属代币
-- ✅ **CreateEscrow** - 创建托管
-- ✅ **ReleaseEscrow** - 释放托管
-- ✅ **RefundEscrow** - 退款托管
+- ✅ **CreateVesting** - 创建归属计划（新路径）
+- ✅ **ClaimVesting** - 领取归属代币（新路径）
+- ✅ **CreateEscrow** - 创建托管（新路径）
+- ✅ **ReleaseEscrow** - 释放托管（新路径）
+- ✅ **RefundEscrow** - 退款托管（新路径）
+
+**架构说明**:
+```
+Market Service
+    │
+    ├─> CreateVesting: 新路径（推荐）
+    │   ├─> buildVestingDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> ClaimVesting: 新路径（推荐）
+    │   ├─> buildClaimVestingDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> CreateEscrow: 新路径（推荐）
+    │   ├─> buildEscrowDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> ReleaseEscrow: 新路径（推荐）
+    │   ├─> buildReleaseEscrowDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    └─> RefundEscrow: 新路径（推荐）
+        ├─> buildRefundEscrowDraft()
+        ├─> wes_computeSignatureHashFromDraft()
+        └─> wes_finalizeTransactionFromDraft()
+    
+    ⚠️ 旧路径已废弃（将在 v2.0.0 移除）:
+    - buildVestingTransaction()
+    - buildClaimVestingTransaction()
+    - buildEscrowTransaction()
+    - buildReleaseEscrowTransaction()
+    - buildRefundEscrowTransaction()
+```
 
 ---
 
 ### 4. Governance 服务 ✅
 
 **路径**: `services/governance/`  
-**状态**: ✅ 基础结构完成
+**状态**: ✅ 已迁移到新架构（Draft+Hash+Finalize）
 
 **功能**:
-- ✅ **Propose** - 创建提案
-- ✅ **Vote** - 投票
-- ✅ **UpdateParam** - 更新参数
+- ✅ **Propose** - 创建提案（新路径）
+- ✅ **Vote** - 投票（新路径）
+- ✅ **UpdateParam** - 更新参数（新路径）
+
+**架构说明**:
+```
+Governance Service
+    │
+    ├─> Propose: 新路径（推荐）
+    │   ├─> buildProposeDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> Vote: 新路径（推荐）
+    │   ├─> buildVoteDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    └─> UpdateParam: 新路径（推荐）
+        ├─> buildUpdateParamDraft()
+        ├─> wes_computeSignatureHashFromDraft()
+        └─> wes_finalizeTransactionFromDraft()
+    
+    ⚠️ 旧路径已废弃（将在 v2.0.0 移除）:
+    - buildProposeTransaction()
+    - buildVoteTransaction()
+    - buildUpdateParamTransaction()
+```
 
 ---
 
@@ -275,15 +385,20 @@ func (s *service) method(ctx context.Context, req *Request, wallets ...wallet.Wa
         return nil, fmt.Errorf("wallet address does not match from address")
     }
 
-    // 4. 业务逻辑（构建交易）
-    unsignedTxBytes, err := buildTransaction(...)
+    // 4. 业务逻辑（构建交易草稿）
+    draftJSON, inputIndex, err := buildDraft(...)
     
-    // 5. Wallet 签名
-    signedTxBytes, err := w.SignTransaction(unsignedTxBytes)
+    // 5. 计算签名哈希
+    hashResult, err := client.Call(ctx, "wes_computeSignatureHashFromDraft", ...)
     
-    // 6. 提交交易
-    signedTxHex := "0x" + hex.EncodeToString(signedTxBytes)
-    sendResult, err := s.client.SendRawTransaction(ctx, signedTxHex)
+    // 6. Wallet 签名哈希
+    sigBytes, err := w.SignHash(hashBytes)
+    
+    // 7. 完成交易
+    finalResult, err := client.Call(ctx, "wes_finalizeTransactionFromDraft", ...)
+    
+    // 8. 提交交易
+    sendResult, err := s.client.SendRawTransaction(ctx, txHex)
     
     // 7. 返回结果
     return &Result{TxHash: sendResult.TxHash, Success: true}, nil

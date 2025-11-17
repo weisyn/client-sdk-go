@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/weisyn/client-sdk-go/wallet"
 )
 
@@ -39,23 +40,10 @@ func (s *tokenService) mint(ctx context.Context, req *MintRequest, wallets ...wa
 		return nil, fmt.Errorf("wallet is required")
 	}
 
-	// 3. 确定合约 contentHash
-	// TODO: 需要实现从 contractAddr 或 tokenID 查询合约 contentHash 的接口
-	// 当前简化：假设 contractAddr 或 tokenID 可以作为 contentHash（32字节）
-	var contentHash []byte
-	if len(req.ContractAddr) == 20 {
-		// 简化：假设 contractAddr 可以用于查询 contentHash
-		// 实际应该通过 contractAddr 查询合约的 contentHash
-		// 临时方案：如果 tokenID 不为空，使用 tokenID 作为 contentHash
-		if len(req.TokenID) == 32 {
-			contentHash = req.TokenID
-		} else {
-			return nil, fmt.Errorf("cannot determine contract contentHash: need contractAddr to contentHash lookup or provide tokenID")
-		}
-	} else if len(req.TokenID) == 32 {
-		contentHash = req.TokenID
-	} else {
-		return nil, fmt.Errorf("contractAddr or tokenID is required")
+	// 3. 使用请求中的合约 contentHash
+	contentHash := req.ContractContentHash
+	if len(contentHash) != 32 {
+		return nil, fmt.Errorf("contract contentHash must be 32 bytes")
 	}
 
 	// 4. 构建 mint 方法的参数（通过 payload）
@@ -65,9 +53,6 @@ func (s *tokenService) mint(ctx context.Context, req *MintRequest, wallets ...wa
 	}
 	if len(req.TokenID) > 0 {
 		mintParams["tokenID"] = hex.EncodeToString(req.TokenID)
-	}
-	if len(req.ContractAddr) > 0 {
-		mintParams["contractAddr"] = hex.EncodeToString(req.ContractAddr)
 	}
 
 	// 将参数编码为 JSON，然后 Base64 编码
@@ -144,9 +129,9 @@ func (s *tokenService) validateMintRequest(req *MintRequest) error {
 		return fmt.Errorf("amount must be greater than 0")
 	}
 
-	// 3. 验证TokenID（如果提供）
-	if req.TokenID != nil && len(req.TokenID) != 32 {
-		return fmt.Errorf("tokenID must be 32 bytes if provided")
+	// 3. 验证合约 contentHash（必需）
+	if len(req.ContractContentHash) != 32 {
+		return fmt.Errorf("contract contentHash must be 32 bytes")
 	}
 
 	return nil
@@ -182,21 +167,79 @@ func (s *tokenService) burn(ctx context.Context, req *BurnRequest, wallets ...wa
 		return nil, fmt.Errorf("wallet address does not match from address")
 	}
 
-	// 4. 在 SDK 层构建未签名交易
-	unsignedTxBytes, err := buildBurnTransaction(ctx, s.client, req.From, req.Amount, req.TokenID)
+	// 4. 构建 DraftJSON
+	draftJSON, inputIndex, err := buildBurnDraft(ctx, s.client, req.From, req.Amount, req.TokenID)
 	if err != nil {
-		return nil, fmt.Errorf("build burn transaction failed: %w", err)
+		return nil, fmt.Errorf("build burn draft failed: %w", err)
 	}
 
-	// 5. 使用 Wallet 签名交易
-	signedTxBytes, err := w.SignTransaction(unsignedTxBytes)
+	// 5. 调用 wes_computeSignatureHashFromDraft 获取签名哈希
+	hashParams := map[string]interface{}{
+		"draft":        json.RawMessage(draftJSON),
+		"input_index":  inputIndex,
+		"sighash_type": "SIGHASH_ALL",
+	}
+	hashResult, err := s.client.Call(ctx, "wes_computeSignatureHashFromDraft", hashParams)
 	if err != nil {
-		return nil, fmt.Errorf("sign transaction failed: %w", err)
+		return nil, fmt.Errorf("compute signature hash failed: %w", err)
 	}
 
-	// 6. 调用 wes_sendRawTransaction 提交已签名交易
-	signedTxHex := "0x" + hex.EncodeToString(signedTxBytes)
-	sendResult, err := s.client.SendRawTransaction(ctx, signedTxHex)
+	hashMap, ok := hashResult.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response format from wes_computeSignatureHashFromDraft")
+	}
+	hashHex, ok := hashMap["hash"].(string)
+	if !ok || hashHex == "" {
+		return nil, fmt.Errorf("missing hash in wes_computeSignatureHashFromDraft response")
+	}
+
+	// 同时获取对应的 unsignedTx，确保后续 finalize 使用同一份交易
+	unsignedTxHex, _ := hashMap["unsignedTx"].(string)
+
+	hashBytes, err := hex.DecodeString(strings.TrimPrefix(hashHex, "0x"))
+	if err != nil {
+		return nil, fmt.Errorf("decode signature hash failed: %w", err)
+	}
+
+	// 6. 使用 Wallet 对哈希进行签名
+	sigBytes, err := w.SignHash(hashBytes)
+	if err != nil {
+		return nil, fmt.Errorf("sign hash failed: %w", err)
+	}
+
+	// 7. 获取压缩公钥
+	priv := w.PrivateKey()
+	if priv == nil {
+		return nil, fmt.Errorf("wallet private key is nil")
+	}
+	pubCompressed := ethcrypto.CompressPubkey(&priv.PublicKey)
+
+	// 8. 调用 wes_finalizeTransactionFromDraft 生成带 SingleKeyProof 的交易
+	finalizeParams := map[string]interface{}{
+		"draft":       json.RawMessage(draftJSON),
+		"unsignedTx":  unsignedTxHex,
+		"input_index": inputIndex,
+		"sighash_type": "SIGHASH_ALL",
+		"pubkey":      "0x" + hex.EncodeToString(pubCompressed),
+		"signature":   "0x" + hex.EncodeToString(sigBytes),
+	}
+	finalResult, err := s.client.Call(ctx, "wes_finalizeTransactionFromDraft", finalizeParams)
+	if err != nil {
+		return nil, fmt.Errorf("finalize transaction from draft failed: %w", err)
+	}
+
+	finalMap, ok := finalResult.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid response format from wes_finalizeTransactionFromDraft")
+	}
+
+	txHex, ok := finalMap["tx"].(string)
+	if !ok || txHex == "" {
+		return nil, fmt.Errorf("missing tx in wes_finalizeTransactionFromDraft response")
+	}
+
+	// 9. 提交交易
+	sendResult, err := s.client.SendRawTransaction(ctx, txHex)
 	if err != nil {
 		return nil, fmt.Errorf("send raw transaction failed: %w", err)
 	}

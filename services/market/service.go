@@ -65,11 +65,12 @@ func (s *marketService) getWallet(wallets ...wallet.Wallet) wallet.Wallet {
 
 // SwapRequest AMM交换请求
 type SwapRequest struct {
-	From        []byte // 交换者地址（20字节）
-	TokenIn     []byte // 输入代币ID（nil表示原生币）
-	TokenOut    []byte // 输出代币ID（nil表示原生币）
-	AmountIn    uint64 // 输入金额
-	AmountOutMin uint64 // 最小输出金额（滑点保护）
+	From           []byte // 交换者地址（20字节）
+	AMMContractAddr []byte // AMM 合约地址（contentHash，32字节）
+	TokenIn        []byte // 输入代币ID（nil表示原生币）
+	TokenOut       []byte // 输出代币ID（nil表示原生币）
+	AmountIn       uint64 // 输入金额
+	AmountOutMin   uint64 // 最小输出金额（滑点保护）
 }
 
 // SwapResult AMM交换结果
@@ -81,11 +82,12 @@ type SwapResult struct {
 
 // AddLiquidityRequest 添加流动性请求
 type AddLiquidityRequest struct {
-	From    []byte // 流动性提供者地址（20字节）
-	TokenA  []byte // 代币A ID
-	TokenB  []byte // 代币B ID
-	AmountA uint64 // 代币A金额
-	AmountB uint64 // 代币B金额
+	From           []byte // 流动性提供者地址（20字节）
+	AMMContractAddr []byte // AMM 合约地址（contentHash，32字节）
+	TokenA         []byte // 代币A ID
+	TokenB         []byte // 代币B ID
+	AmountA        uint64 // 代币A金额
+	AmountB         uint64 // 代币B金额
 }
 
 // AddLiquidityResult 添加流动性结果
@@ -97,9 +99,10 @@ type AddLiquidityResult struct {
 
 // RemoveLiquidityRequest 移除流动性请求
 type RemoveLiquidityRequest struct {
-	From        []byte // 流动性提供者地址（20字节）
-	LiquidityID []byte // 流动性ID
-	Amount      uint64 // 移除金额
+	From           []byte // 流动性提供者地址（20字节）
+	AMMContractAddr []byte // AMM 合约地址（contentHash，32字节）
+	LiquidityID    []byte // 流动性ID
+	Amount         uint64 // 移除金额
 }
 
 // RemoveLiquidityResult 移除流动性结果
@@ -158,8 +161,9 @@ type CreateEscrowResult struct {
 
 // ReleaseEscrowRequest 释放托管请求
 type ReleaseEscrowRequest struct {
-	From     []byte // 释放者地址（通常是买方，20字节）
-	EscrowID []byte // 托管ID
+	From         []byte // 释放者地址（通常是买方，20字节）
+	SellerAddress []byte // 卖方地址（20字节）
+	EscrowID     []byte // 托管ID
 }
 
 // ReleaseEscrowResult 释放托管结果
@@ -170,8 +174,9 @@ type ReleaseEscrowResult struct {
 
 // RefundEscrowRequest 退款托管请求
 type RefundEscrowRequest struct {
-	From     []byte // 退款者地址（通常是买方或卖方，20字节）
-	EscrowID []byte // 托管ID
+	From         []byte // 退款者地址（通常是买方或卖方，20字节）
+	BuyerAddress []byte // 买方地址（20字节）
+	EscrowID     []byte // 托管ID
 }
 
 // RefundEscrowResult 退款托管结果

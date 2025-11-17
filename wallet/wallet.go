@@ -2,13 +2,14 @@ package wallet
 
 import (
 	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"math/big"
 	"time"
+
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"golang.org/x/crypto/ripemd160"
 )
 
 // Wallet 钱包接口
@@ -21,6 +22,9 @@ type Wallet interface {
 	
 	// SignMessage 签名消息
 	SignMessage(msg []byte) ([]byte, error)
+
+	// SignHash 签名给定哈希（供高级调用方使用）
+	SignHash(hash []byte) ([]byte, error)
 	
 	// PrivateKey 获取私钥（谨慎使用）
 	PrivateKey() *ecdsa.PrivateKey
@@ -35,8 +39,8 @@ type SimpleWallet struct {
 
 // NewWallet 创建新钱包
 func NewWallet() (Wallet, error) {
-	// 生成私钥
-	privateKey, err := ecdsa.GenerateKey(nil, rand.Reader)
+	// 生成 secp256k1 私钥（与链上使用的曲线保持一致）
+	privateKey, err := ethcrypto.GenerateKey()
 	if err != nil {
 		return nil, fmt.Errorf("generate private key: %w", err)
 	}
@@ -128,60 +132,27 @@ func (w *SimpleWallet) PrivateKey() *ecdsa.PrivateKey {
 	return w.privateKey
 }
 
-// deriveAddress 从私钥派生地址（简化实现）
-// 注意：这是一个占位实现，实际应该使用 AddressManager
-// 参考：client/core/wallet/account_manager.go 中的地址派生逻辑
+// deriveAddress 从私钥派生地址
+// 使用 secp256k1 公钥的 HASH160(compressed_pubkey) 作为 20 字节地址
+// 与链上 AddressManager 的语义保持一致
 func deriveAddress(privateKey *ecdsa.PrivateKey) []byte {
-	// 简化实现：使用私钥的D值的前20字节作为地址
-	// 实际应该：
-	// 1. 从私钥计算公钥
-	// 2. 对公钥进行哈希（SHA256 + RIPEMD160）
-	// 3. 添加版本号和校验和
-	// 4. Base58编码
-	
-	// 临时实现：使用私钥D值的前20字节
-	address := make([]byte, 20)
-	dBytes := privateKey.D.Bytes()
-	if len(dBytes) >= 20 {
-		copy(address, dBytes[:20])
-	} else {
-		// 如果D值不足20字节，用0补齐
-		copy(address[20-len(dBytes):], dBytes)
-	}
-	return address
+	// 压缩公钥
+	compressed := ethcrypto.CompressPubkey(&privateKey.PublicKey)
+
+	// 计算 HASH160(compressed_pubkey)
+	sha := sha256.Sum256(compressed)
+	r := ripemd160.New()
+	_, _ = r.Write(sha[:])
+	return r.Sum(nil) // 20 字节
 }
 
 // parsePrivateKey 解析私钥（参考 client/core/transfer/service.go）
-// 使用标准库的 crypto/ecdsa
+// 使用 go-ethereum/crypto 解析 secp256k1 私钥
 func parsePrivateKey(privateKeyBytes []byte) (*ecdsa.PrivateKey, error) {
-	// 验证长度
-	if len(privateKeyBytes) != 32 {
-		return nil, fmt.Errorf("invalid private key length: expected 32 bytes, got %d", len(privateKeyBytes))
+	privateKey, err := ethcrypto.ToECDSA(privateKeyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse secp256k1 private key failed: %w", err)
 	}
-	
-	// 转换为big.Int
-	d := new(big.Int).SetBytes(privateKeyBytes)
-	
-	// 验证私钥范围（必须在[1, n-1]之间，其中n是曲线的阶）
-	curve := elliptic.P256()
-	n := curve.Params().N
-	if d.Cmp(big.NewInt(1)) < 0 || d.Cmp(new(big.Int).Sub(n, big.NewInt(1))) > 0 {
-		return nil, fmt.Errorf("private key out of range")
-	}
-	
-	// 计算公钥点
-	x, y := curve.ScalarBaseMult(privateKeyBytes)
-	
-	// 创建私钥结构
-	privateKey := &ecdsa.PrivateKey{
-		PublicKey: ecdsa.PublicKey{
-			Curve: curve,
-			X:     x,
-			Y:     y,
-		},
-		D: d,
-	}
-	
 	return privateKey, nil
 }
 
