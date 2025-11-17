@@ -1,14 +1,14 @@
 ## 🧱 client-sdk-go 架构边界与职责划分
 
 > 版本：v0.1（草案）  
-> 目标：明确 Go SDK 与 WES 内核 (`weisyn.git`) 之间的边界，避免 SDK 与内部实现耦合。
+> 目标：明确 Go SDK 与 WES 内核 (`github.com/weisyn/go-weisyn`) 之间的边界，避免 SDK 与内部实现耦合。
 
 ---
 
 ### 1. 位置与角色
 
-- **仓库**：`client-sdk-go`（独立 SDK 仓库）
-- **本地路径**：`/Users/qinglong/go/src/chaincodes/WES/sdk/client-sdk-go.git`
+- **仓库**：`github.com/weisyn/client-sdk-go`（独立 SDK 仓库）
+- **GitHub**：https://github.com/weisyn/client-sdk-go
 - **架构层级**（对应 `1-STRUCTURE_VIEW.md` 中的 7 层）：
   - SDK 层（Client SDK）：位于 API 网关层之上，面向：
     - DApp / 钱包 / 后端服务
@@ -79,7 +79,7 @@
 
 ### 4. 规划中的通用交易 API（WES 侧，供 SDK 使用）
 
-以下 API 在 `weisyn.git/internal/api/jsonrpc/methods/tx.go` 中设计和实现，SDK 只作为调用方：
+以下 API 在 `github.com/weisyn/go-weisyn/internal/api/jsonrpc/methods/tx.go` 中设计和实现，SDK 只作为调用方：
 
 1. `wes_buildTransaction(draft)`
    - **已有**：从 DraftJSON 构建内部交易，并返回 `unsignedTx`（当前版本已经在使用）。
@@ -108,7 +108,7 @@ SDK 侧的调用模式将统一为：
   - CLI / 终端工具逐步改用 `client-sdk-go`。
   - `client/` 只保留极少量必要 glue 代码，最终退役。
 - 迁移规划详见：
-  - `weisyn.git/client/CLIENT_MIGRATION_PLAN.md`
+  - `github.com/weisyn/go-weisyn/client/CLIENT_MIGRATION_PLAN.md` (如存在)
 
 ---
 

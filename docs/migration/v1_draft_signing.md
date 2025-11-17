@@ -198,7 +198,7 @@ result, err := tokenService.Burn(ctx, &token.BurnRequest{
 
 - [架构边界文档](./ARCHITECTURE_BOUNDARY.md)
 - [Token Service 文档](./services/token/README.md)
-- [WES JSON-RPC API 文档](../../weisyn.git/docs/api/jsonrpc/README.md)
+- [WES JSON-RPC API 文档](https://github.com/weisyn/go-weisyn/blob/main/docs/api/jsonrpc/README.md)
 
 ---
 
@@ -226,5 +226,5 @@ A: 不需要。合约调用使用 `wes_callContract` + `return_unsigned_tx=true`
 
 如有问题，请参考：
 - [GitHub Issues](https://github.com/weisyn/client-sdk-go/issues)
-- [文档仓库](../../weisyn.git/docs/)
+- [文档仓库](https://github.com/weisyn/go-weisyn/tree/main/docs)
 

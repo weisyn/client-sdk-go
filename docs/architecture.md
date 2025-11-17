@@ -221,7 +221,10 @@ sequenceDiagram
 SDK 层 (业务语义)
   ├─> tokenService.Transfer()
   ├─> tokenService.Mint()
-  └─> stakingService.Stake()
+  ├─> stakingService.Stake()
+  ├─> marketService.SwapAMM()
+  ├─> governanceService.Propose()
+  └─> resourceService.DeployContract()
        ↓ 调用
 API 层 (通用接口)
   ├─> wes_buildTransaction

@@ -51,20 +51,23 @@
 
 #### 2.1.1 WES 节点
 
-**节点位置**：`/Users/qinglong/go/src/chaincodes/WES/weisyn.git`
+**节点仓库**：`github.com/weisyn/go-weisyn` (https://github.com/weisyn/go-weisyn)
 
 **启动方式**：
 ```bash
 # 方式 1：使用测试初始化脚本（推荐）
-cd /Users/qinglong/go/src/chaincodes/WES/weisyn.git
+git clone https://github.com/weisyn/go-weisyn.git
+cd go-weisyn
 bash scripts/testing/common/test_init.sh
 
 # 方式 2：直接启动测试节点
-cd /Users/qinglong/go/src/chaincodes/WES/weisyn.git
+git clone https://github.com/weisyn/go-weisyn.git
+cd go-weisyn
 go run ./cmd/testing --api-only
 
 # 方式 3：使用预编译二进制
-cd /Users/qinglong/go/src/chaincodes/WES/weisyn.git
+git clone https://github.com/weisyn/go-weisyn.git
+cd go-weisyn
 ./bin/weisyn-testing --daemon --env testing
 ```
 
@@ -87,11 +90,12 @@ curl -X POST http://localhost:8080/jsonrpc \
 
 #### 2.1.2 SDK 项目
 
-**SDK 位置**：`/Users/qinglong/go/src/chaincodes/WES/sdk/client-sdk-go.git`
+**SDK 仓库**：`github.com/weisyn/client-sdk-go` (https://github.com/weisyn/client-sdk-go)
 
 **编译要求**：
 ```bash
-cd /Users/qinglong/go/src/chaincodes/WES/sdk/client-sdk-go.git
+git clone https://github.com/weisyn/client-sdk-go.git
+cd client-sdk-go
 go build ./...
 ```
 
@@ -141,7 +145,7 @@ go build ./...
 └─────────────────────────────────────────────────────────┘
                         ↓
 ┌─────────────────────────────────────────────────────────┐
-│              WES 节点 (weisyn.git)                       │
+│              WES 节点 (github.com/weisyn/go-weisyn)     │
 │  - JSON-RPC API                                          │
 │  - 交易处理与出块                                         │
 └─────────────────────────────────────────────────────────┘
@@ -595,7 +599,7 @@ go test ./test/integration/services/token/... -v
 ### 5.1 目录结构
 
 ```
-client-sdk-go.git/
+client-sdk-go/
 ├── test/
 │   ├── README.md                    # 测试总说明
 │   │
@@ -776,7 +780,7 @@ set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
-SDK_ROOT="${PROJECT_ROOT}/sdk/client-sdk-go.git"
+SDK_ROOT="${PROJECT_ROOT}/client-sdk-go"
 
 # 初始化测试环境
 source "${PROJECT_ROOT}/scripts/testing/common/test_init.sh"
@@ -798,11 +802,11 @@ go test ./test/integration/services/token/... -v -count=1
 
 ```bash
 # 1. 启动节点（如未运行）
-cd /Users/qinglong/go/src/chaincodes/WES/weisyn.git
+cd go-weisyn
 bash scripts/testing/common/test_init.sh
 
 # 2. 运行单个服务测试
-cd /Users/qinglong/go/src/chaincodes/WES/sdk/client-sdk-go.git
+cd client-sdk-go
 go test ./test/integration/services/token/... -v
 ```
 
@@ -810,15 +814,15 @@ go test ./test/integration/services/token/... -v
 
 ```bash
 # 1. 启动节点
-cd /Users/qinglong/go/src/chaincodes/WES/weisyn.git
+cd go-weisyn
 bash scripts/testing/common/test_init.sh
 
 # 2. 运行所有集成测试
-cd /Users/qinglong/go/src/chaincodes/WES/sdk/client-sdk-go.git
+cd client-sdk-go
 go test ./test/integration/... -v
 
 # 3. 或使用测试脚本
-cd /Users/qinglong/go/src/chaincodes/WES/sdk/client-sdk-go.git
+cd client-sdk-go
 bash scripts/testing/sdk/token_test.sh
 bash scripts/testing/sdk/staking_test.sh
 bash scripts/testing/sdk/market_test.sh
@@ -848,13 +852,15 @@ jobs:
       
       - name: Start WES Node
         run: |
-          cd weisyn.git
+          git clone https://github.com/weisyn/go-weisyn.git
+          cd go-weisyn
           go run ./cmd/testing --api-only &
           sleep 10
       
       - name: Run Tests
         run: |
-          cd sdk/client-sdk-go.git
+          git clone https://github.com/weisyn/client-sdk-go.git
+          cd client-sdk-go
           go test ./test/integration/... -v
 ```
 

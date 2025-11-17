@@ -4,9 +4,15 @@
 
 ## 📦 安装
 
-### 当前开发阶段
+### 安装方式
 
-SDK 在主仓库 `_sdks/` 下孵化，使用本地路径：
+SDK 已独立发布，直接使用 Go 模块：
+
+```bash
+go get github.com/weisyn/client-sdk-go@latest
+```
+
+或使用 `go.mod`：
 
 ```go
 // go.mod
@@ -14,15 +20,7 @@ module your-app
 
 go 1.24
 
-replace github.com/weisyn/client-sdk-go => ../path/to/_sdks/client-sdk-go
-
 require github.com/weisyn/client-sdk-go v0.0.0
-```
-
-### 未来正式发布后
-
-```bash
-go get github.com/weisyn/client-sdk-go@latest
 ```
 
 ## 🚀 第一个应用
@@ -59,7 +57,11 @@ if err != nil {
 wallet, err := wallet.NewWalletFromPrivateKey("0x...")
 ```
 
-### 3. 执行转账
+### 3. 使用业务服务
+
+SDK 提供5个核心业务服务：
+
+#### Token 服务 - 代币操作
 
 ```go
 import (
@@ -69,6 +71,7 @@ import (
 
 tokenService := token.NewService(cli)
 
+// 转账
 result, err := tokenService.Transfer(context.Background(), &token.TransferRequest{
     From:    wallet.Address(),
     To:      toAddr,
@@ -76,11 +79,66 @@ result, err := tokenService.Transfer(context.Background(), &token.TransferReques
     TokenID: nil,     // nil 表示原生币
 }, wallet)
 
-if err != nil {
-    log.Fatalf("转账失败: %v", err)
-}
+// 查询余额
+balance, err := tokenService.GetBalance(context.Background(), wallet.Address(), nil)
+```
 
-fmt.Printf("转账成功！交易哈希: %s\n", result.TxHash)
+#### Staking 服务 - 质押与委托
+
+```go
+import "github.com/weisyn/client-sdk-go/services/staking"
+
+stakingService := staking.NewService(cli)
+
+// 质押
+result, err := stakingService.Stake(ctx, &staking.StakeRequest{
+    From:     wallet.Address(),
+    Amount:   10000,
+    Validator: validatorAddr,
+}, wallet)
+```
+
+#### Market 服务 - 市场与流动性
+
+```go
+import "github.com/weisyn/client-sdk-go/services/market"
+
+marketService := market.NewService(cli)
+
+// AMM 交换
+result, err := marketService.SwapAMM(ctx, &market.SwapAMMRequest{
+    ContractAddr: ammContractAddr,
+    TokenIn:      tokenIn,
+    AmountIn:     1000,
+}, wallet)
+```
+
+#### Governance 服务 - 治理
+
+```go
+import "github.com/weisyn/client-sdk-go/services/governance"
+
+governanceService := governance.NewService(cli)
+
+// 创建提案
+result, err := governanceService.Propose(ctx, &governance.ProposeRequest{
+    Title:   "提案标题",
+    Content: "提案内容",
+}, wallet)
+```
+
+#### Resource 服务 - 资源部署
+
+```go
+import "github.com/weisyn/client-sdk-go/services/resource"
+
+resourceService := resource.NewService(cli)
+
+// 部署合约
+result, err := resourceService.DeployContract(ctx, &resource.DeployContractRequest{
+    WasmBytes: wasmBytes,
+    Name:      "My Contract",
+}, wallet)
 ```
 
 ## 📚 下一步
