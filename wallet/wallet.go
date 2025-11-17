@@ -16,16 +16,16 @@ import (
 type Wallet interface {
 	// Address 获取钱包地址
 	Address() []byte
-	
+
 	// SignTransaction 签名交易
 	SignTransaction(tx []byte) ([]byte, error)
-	
+
 	// SignMessage 签名消息
 	SignMessage(msg []byte) ([]byte, error)
 
 	// SignHash 签名给定哈希（供高级调用方使用）
 	SignHash(hash []byte) ([]byte, error)
-	
+
 	// PrivateKey 获取私钥（谨慎使用）
 	PrivateKey() *ecdsa.PrivateKey
 }
@@ -44,10 +44,10 @@ func NewWallet() (Wallet, error) {
 	if err != nil {
 		return nil, fmt.Errorf("generate private key: %w", err)
 	}
-	
+
 	// 从私钥派生地址（简化实现，实际应该使用AddressManager）
 	address := deriveAddress(privateKey)
-	
+
 	return &SimpleWallet{
 		privateKey: privateKey,
 		address:    address,
@@ -59,23 +59,23 @@ func NewWallet() (Wallet, error) {
 func NewWalletFromPrivateKey(privateKeyHex string) (Wallet, error) {
 	// 移除0x前缀（如果有）
 	privateKeyHex = hexRemovePrefix(privateKeyHex)
-	
+
 	privateKeyBytes, err := hex.DecodeString(privateKeyHex)
 	if err != nil {
 		return nil, fmt.Errorf("decode private key: %w", err)
 	}
-	
+
 	// 验证私钥长度（ECDSA私钥应该是32字节）
 	if len(privateKeyBytes) != 32 {
 		return nil, fmt.Errorf("invalid private key length: expected 32 bytes, got %d", len(privateKeyBytes))
 	}
-	
+
 	// 解析私钥（参考 client/core/transfer/service.go）
 	privateKey, err := parsePrivateKey(privateKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("parse private key: %w", err)
 	}
-	
+
 	address := deriveAddress(privateKey)
 	
 	return &SimpleWallet{
@@ -94,7 +94,7 @@ func (w *SimpleWallet) Address() []byte {
 func (w *SimpleWallet) SignTransaction(tx []byte) ([]byte, error) {
 	// 1. 计算交易哈希
 	hash := sha256.Sum256(tx)
-	
+
 	// 2. 签名哈希
 	return w.SignHash(hash[:])
 }
@@ -106,14 +106,14 @@ func (w *SimpleWallet) SignHash(hash []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ecdsa sign: %w", err)
 	}
-	
+
 	// 序列化签名: r || s (64字节)
 	// 确保r和s都是32字节（补齐前导零）
 	rBytes := make([]byte, 32)
 	sBytes := make([]byte, 32)
 	r.FillBytes(rBytes)
 	s.FillBytes(sBytes)
-	
+
 	signature := append(rBytes, sBytes...)
 	return signature, nil
 }

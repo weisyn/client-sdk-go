@@ -140,7 +140,7 @@ func (s *governanceService) propose(ctx context.Context, req *ProposeRequest, wa
 		return nil, fmt.Errorf("transaction rejected: %s", sendResult.Reason)
 	}
 
-	// 7. 解析交易结果，提取 ProposalID
+	// 10. 解析交易结果，提取 ProposalID
 	proposalID := ""
 	parsedTx, err := utils.FetchAndParseTx(ctx, s.client, sendResult.TxHash)
 	if err == nil && parsedTx != nil {

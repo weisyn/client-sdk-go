@@ -1,7 +1,21 @@
-## 🧱 client-sdk-go 架构边界与职责划分
+# client-sdk-go 架构边界与职责划分
 
-> 版本：v0.1（草案）  
-> 目标：明确 Go SDK 与 WES 内核 (`github.com/weisyn/go-weisyn`) 之间的边界，避免 SDK 与内部实现耦合。
+---
+
+## 📌 版本信息
+
+- **版本**：0.1.0-alpha
+- **状态**：draft
+- **最后更新**：2025-11-17
+- **最后审核**：2025-11-17
+- **所有者**：SDK 团队
+- **适用范围**：Go 客户端 SDK（已归档）
+
+---
+
+## 🎯 文档目标
+
+明确 Go SDK 与 WES 内核 (`github.com/weisyn/go-weisyn`) 之间的边界，避免 SDK 与内部实现耦合。
 
 ---
 

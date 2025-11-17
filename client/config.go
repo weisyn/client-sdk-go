@@ -19,6 +19,9 @@ type Config struct {
 	
 	// 日志器（可选）
 	Logger Logger
+	
+	// Retry 重试配置（可选）
+	Retry *RetryConfig
 }
 
 // Protocol 协议类型

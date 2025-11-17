@@ -9,18 +9,13 @@
 - **最后更新**：2025-11-17
 - **最后审核**：2025-11-17
 - **所有者**：SDK 团队
-- **适用范围**：Go 客户端 SDK
+- **适用范围**：Go 客户端 SDK（已归档）
 
 ---
 
-## 📖 文档前提
+## 📖 概述
 
-> 💡 **重要**：本文档描述 **SDK 内部架构**，而非 WES 区块链系统架构。  
-> 如需了解 WES 系统架构，请参考：
-> - [WES 系统架构](https://github.com/weisyn/weisyn/blob/main/docs/system/architecture/README.md)
-> - [WES 组件文档](https://github.com/weisyn/weisyn/blob/main/docs/components/README.md)
-
----
+本文档说明 WES Client SDK for Go 的架构设计，包括在 WES 7 层架构中的位置和 SDK 内部的分层设计。
 
 ## 📐 在 WES 7 层架构中的位置
 
@@ -117,8 +112,6 @@ graph TB
 - ❌ 共识机制（由 WES 节点负责）
 - ❌ 区块验证（由 WES 节点负责）
 
----
-
 ## 🏗️ SDK 内部分层架构
 
 在 SDK 仓库内部，采用清晰的分层设计：
@@ -157,8 +150,6 @@ graph TB
     subgraph UTILS_LAYER["工具层 (utils/)"]
         direction LR
         ADDRESS["地址转换"]
-        BATCH["批量操作"]
-        FILE["文件处理"]
         PARSER["交易解析"]
     end
     
@@ -187,9 +178,7 @@ graph TB
 | **业务服务层** | 提供业务语义 API | Token、Staking、Market、Governance、Resource |
 | **核心客户端层** | 封装协议调用 | HTTP、gRPC、WebSocket |
 | **钱包层** | 密钥管理与签名 | Wallet 接口、Keystore 加密存储 |
-| **工具层** | 辅助功能 | 地址转换、批量操作、文件处理、交易解析 |
-
----
+| **工具层** | 辅助功能 | 地址转换、交易解析 |
 
 ## 🔄 调用流程
 
@@ -226,108 +215,6 @@ sequenceDiagram
     Client-->>Service: txHash
     Service-->>App: TransferResult{TxHash, Success}
 ```
-
----
-
-## 📦 模块划分
-
-### 1. client/ - 核心客户端层
-
-**职责**：节点连接、JSON-RPC 调用、协议抽象
-
-**核心接口**：
-
-```go
-type Client interface {
-    Call(ctx context.Context, method string, params interface{}) (interface{}, error)
-    SendRawTransaction(ctx context.Context, signedTxHex string) (*SendTxResult, error)
-    Close() error
-}
-```
-
-**实现**：
-- `HTTPClient`: HTTP 协议实现
-- `GRPCClient`: gRPC 协议实现（高性能场景）
-- `WebSocketClient`: WebSocket 协议实现（用于事件订阅）
-
-**特性**：
-- ✅ 请求重试机制（指数退避）
-- ✅ 超时控制
-- ✅ 错误分类和处理
-- ✅ 调试日志
-
-**依赖**：无（SDK 最底层）
-
----
-
-### 2. wallet/ - 钱包层
-
-**职责**：密钥管理、交易签名、地址派生
-
-**核心接口**：
-
-```go
-type Wallet interface {
-    Address() []byte
-    PublicKey() []byte
-    SignHash(hash []byte) ([]byte, error)
-    SignTransaction(unsignedTx []byte) ([]byte, error)
-    SignMessage(message []byte) ([]byte, error)
-}
-```
-
-**实现**：
-- `SimpleWallet`: 基础钱包实现
-- `Keystore`: 加密存储实现
-
-**特性**：
-- ✅ 密钥生成和导入
-- ✅ 交易和消息签名
-- ✅ Keystore 加密存储（PBKDF2 + AES-256-GCM）
-- ✅ 支持多种密钥格式
-
-**依赖**：无
-
----
-
-### 3. services/ - 业务服务层
-
-**职责**：业务语义实现、交易构建、结果解析
-
-**服务列表**：
-- `TokenService`: 代币操作（转账、批量转账、铸造、销毁、余额查询）
-- `StakingService`: 质押操作（质押、解质押、委托、取消委托、领取奖励）
-- `MarketService`: 市场操作（AMM、流动性、托管、归属）
-- `GovernanceService`: 治理操作（提案、投票、参数更新）
-- `ResourceService`: 资源操作（合约/模型/静态资源部署、查询）
-
-**设计模式**：
-
-```go
-type TokenService interface {
-    Transfer(ctx context.Context, req *TransferRequest, wallet ...Wallet) (*TransferResult, error)
-    BatchTransfer(ctx context.Context, req *BatchTransferRequest, wallet ...Wallet) (*BatchTransferResult, error)
-    // ...
-}
-```
-
-**依赖**：`client`, `wallet`
-
----
-
-### 4. utils/ - 工具函数层
-
-**职责**：通用工具函数
-
-**模块列表**：
-- `address.go`: 地址转换（Base58Check、十六进制）
-- `batch.go`: 批量操作（批量查询、并行执行）
-- `file.go`: 大文件处理（分块、流式）
-- `tx_parser.go`: 交易解析（UTXO 选择、金额汇总）
-
-**依赖**：无（或仅依赖标准库）
-
----
 
 ## 🎯 设计原则
 
@@ -370,8 +257,6 @@ ISPC 层 (执行引擎)
 - ✅ 支持多种钱包实现（SimpleWallet、Keystore）
 - ✅ 未来可扩展硬件钱包
 
----
-
 ## 🧱 架构边界与职责划分
 
 ### SDK 与 WES 内核的边界
@@ -403,39 +288,15 @@ ISPC 层 (执行引擎)
 - ✅ SignatureHash 计算
 - ✅ 交易提交与验证
 
-> 📖 **详细边界说明**：参见 [`archive/architecture_boundary.md`](./archive/architecture_boundary.md)
-
----
-
-## 🔗 与 WES 主文档的对应关系
-
-### SDK 组件 vs WES 组件
-
-| SDK 模块 | WES 组件 | 说明 |
-|---------|---------|------|
-| `client/` | `components/interface/api/` | JSON-RPC API 封装 |
-| `wallet/` | `components/infrastructure/crypto/` | 密钥管理和签名 |
-| `services/` | `components/interface/sdk/` | 业务语义实现 |
-| `utils/` | 无直接对应 | SDK 内部工具 |
-
-### 业务服务 vs WES 平台
-
-| SDK Service | WES 平台 | 说明 |
-|------------|---------|------|
-| `TokenService` | 协议层基础能力 | 组合 AssetInput/Output + SingleKeyLock |
-| `StakingService` | 协议层基础能力 | 组合 AssetInput/Output + ContractLock + HeightLock |
-| `MarketService` | 合约平台 | 通过 `wes_callContract` 调用 AMM/托管合约 |
-| `GovernanceService` | 协议层基础能力 | 组合 AssetInput + StateOutput + ThresholdLock |
-| `ResourceService` | 资源平台 | 通过 `wes_deployResource` 部署资源 |
-
----
+> 📖 **详细边界说明**：参见 [`architecture_boundary.md`](architecture_boundary.md)
 
 ## 📚 相关文档
 
-- **[概述](./overview.md)** - SDK 核心概念
-- **[快速开始](./getting-started.md)** - 安装和第一个示例
-- **[API 参考](./api/)** - 完整 API 文档
-- **[WES 系统架构](https://github.com/weisyn/go-weisyn/blob/main/docs/system/architecture/1-STRUCTURE_VIEW.md)** - WES 整体架构
+- [WES 系统架构](https://github.com/weisyn/go-weisyn/blob/main/docs/system/architecture/1-STRUCTURE_VIEW.md) - 完整 WES 7 层架构
+- [业务服务文档](modules/services.md) - 业务服务层详细说明
+- [钱包文档](modules/wallet.md) - 钱包功能详细说明
 
 ---
+
+**最后更新**: 2025-11-17
 

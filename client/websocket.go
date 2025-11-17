@@ -18,7 +18,7 @@ type websocketClient struct {
 	conn     *websocket.Conn
 	mu       sync.RWMutex
 	closed   int32
-	nextID   uint64
+	nextID   atomic.Uint64
 	requests map[uint64]chan *jsonrpcResponse
 	muReq    sync.RWMutex
 }
@@ -74,6 +74,7 @@ func NewWebSocketClient(config *Config) (Client, error) {
 	client := &websocketClient{
 		endpoint: endpoint,
 		conn:     conn,
+		nextID:   atomic.Uint64{},
 		requests: make(map[uint64]chan *jsonrpcResponse),
 	}
 
@@ -144,7 +145,7 @@ func (c *websocketClient) Call(ctx context.Context, method string, params interf
 	}
 
 	// 生成请求 ID
-	reqID := atomic.AddUint64(&c.nextID, 1)
+	reqID := c.nextID.Add(1)
 
 	// 创建请求
 	req := jsonrpcRequest{

@@ -133,7 +133,7 @@ func (s *governanceService) vote(ctx context.Context, req *VoteRequest, wallets 
 		return nil, fmt.Errorf("transaction rejected: %s", sendResult.Reason)
 	}
 
-	// 7. 解析交易结果，提取 VoteID
+	// 10. 解析交易结果，提取 VoteID
 	voteID := ""
 	parsedTx, err := utils.FetchAndParseTx(ctx, s.client, sendResult.TxHash)
 	if err == nil && parsedTx != nil {
@@ -311,7 +311,7 @@ func (s *governanceService) updateParam(ctx context.Context, req *UpdateParamReq
 		return nil, fmt.Errorf("transaction rejected: %s", sendResult.Reason)
 	}
 
-	// 7. 返回结果
+	// 10. 返回结果
 	return &UpdateParamResult{
 		TxHash:  sendResult.TxHash,
 		Success: true,

@@ -18,6 +18,7 @@ type httpClient struct {
 	logger   Logger
 	debug    bool
 	nextID   atomic.Uint64
+	retry    *RetryConfig
 }
 
 // NewHTTPClient 创建HTTP客户端
@@ -36,12 +37,24 @@ func NewHTTPClient(config *Config) (Client, error) {
 		// TODO: 实现TLS配置
 	}
 
+	retryConfig := config.Retry
+	if retryConfig == nil {
+		retryConfig = DefaultRetryConfig()
+		// 如果配置了重试，添加日志回调
+		if config.Debug && config.Logger != nil {
+			retryConfig.OnRetry = func(attempt int, err error) {
+				config.Logger.Warn("Retrying request", "attempt", attempt, "error", err)
+			}
+		}
+	}
+
 	return &httpClient{
 		endpoint: config.Endpoint,
 		client:   httpCli,
 		logger:   config.Logger,
 		debug:    config.Debug,
 		nextID:   atomic.Uint64{},
+		retry:    retryConfig,
 	}, nil
 }
 
@@ -67,20 +80,57 @@ func (c *httpClient) Call(ctx context.Context, method string, params interface{}
 		c.logger.Debug("JSON-RPC request", "method", method, "body", string(reqBody))
 	}
 
-	// 创建HTTP请求
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(reqBody))
-	if err != nil {
-		return nil, fmt.Errorf("create request failed: %w", err)
-	}
+	// 发送请求（带重试）
+	var resp *http.Response
+	var respErr error
+	
+	if c.retry != nil {
+		// 使用重试机制
+		respErr = withRetry(ctx, func() error {
+			// 每次重试都创建新的请求（因为 Body 只能读取一次）
+			httpReq, reqErr := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(reqBody))
+			if reqErr != nil {
+				return fmt.Errorf("create request failed: %w", reqErr)
+			}
 
-	// 设置请求头
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Accept", "application/json")
+			// 设置请求头
+			httpReq.Header.Set("Content-Type", "application/json")
+			httpReq.Header.Set("Accept", "application/json")
 
-	// 发送请求
-	resp, err := c.client.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("send request failed: %w", err)
+			// 发送请求
+			httpResp, reqErr := c.client.Do(httpReq)
+			if reqErr != nil {
+				return reqErr
+			}
+
+			// 检查 HTTP 状态码
+			if isRetryableHTTPError(httpResp.StatusCode) {
+				httpResp.Body.Close()
+				return fmt.Errorf("HTTP error: %d", httpResp.StatusCode)
+			}
+
+			// 成功，保存响应
+			resp = httpResp
+			return nil
+		}, c.retry)
+		if respErr != nil {
+			return nil, fmt.Errorf("send request failed: %w", respErr)
+		}
+	} else {
+		// 不使用重试
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(reqBody))
+		if err != nil {
+			return nil, fmt.Errorf("create request failed: %w", err)
+		}
+
+		// 设置请求头
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("Accept", "application/json")
+
+		resp, err = c.client.Do(httpReq)
+		if err != nil {
+			return nil, fmt.Errorf("send request failed: %w", err)
+		}
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {

@@ -1,0 +1,58 @@
+version: 2
+
+run:
+  timeout: 5m
+  concurrency: 4
+  skip-dirs:
+    - vendor
+    - examples
+  skip-files:
+    - ".*\\.pb\\.go$"
+    - ".*_test\\.go$"
+  tests: false
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gocritic
+    - gosec
+    - misspell
+    - unparam
+    - revive
+    - prealloc
+    - bodyclose
+    - typecheck
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  gosec:
+    severity: medium
+    confidence: medium
+  revive:
+    min-confidence: 0.8
+
+issues:
+  exclude-rules:
+    - path: _test\.go$
+      linters:
+        - errcheck
+        - gosec
+      text: "Error return value of .* is not checked"
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+  fix: false
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  print-welcome: false
+

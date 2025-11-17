@@ -9,13 +9,13 @@ import (
 type Client interface {
 	// Call 调用 JSON-RPC 方法
 	Call(ctx context.Context, method string, params interface{}) (interface{}, error)
-	
+
 	// SendRawTransaction 发送已签名的原始交易
 	SendRawTransaction(ctx context.Context, signedTxHex string) (*SendTxResult, error)
-	
+
 	// Subscribe 订阅事件
 	Subscribe(ctx context.Context, filter *EventFilter) (<-chan *Event, error)
-	
+
 	// Close 关闭连接
 	Close() error
 }
@@ -45,7 +45,7 @@ func NewClient(config *Config) (Client, error) {
 	if config == nil {
 		config = DefaultConfig()
 	}
-	
+
 	switch config.Protocol {
 	case ProtocolHTTP:
 		return NewHTTPClient(config)
