@@ -6,8 +6,8 @@
 
 - **版本**：1.0
 - **状态**：stable
-- **最后更新**：2025-01-23
-- **最后审核**：2025-01-23
+- **最后更新**：2025-11-17
+- **最后审核**：2025-11-17
 - **所有者**：WES SDK 团队
 - **适用范围**：Market 服务 AMM 功能架构分析
 
@@ -20,7 +20,7 @@
 **结论**：WES 完全支持 AMM 功能，通过合约调用实现。
 
 **证据**：
-1. ✅ WES 有 AMM 合约示例代码（`_docs/specs/ispc/examples/wasm-contracts/amm-swap.go`）
+1. ✅ WES 有 AMM 合约示例代码（`docs/specs/ispc/examples/wasm-contracts/amm-swap.go`）
 2. ✅ WES 支持合约调用（`wes_callContract` API）
 3. ✅ WES 支持合约部署（`wes_deployContract` API）
 4. ✅ WES 支持合约查询（`wes_getContract` API）

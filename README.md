@@ -9,6 +9,12 @@ WES 区块链客户端开发工具包 - Go 语言版本
 
 WES Client SDK 是一个用于开发 WES 区块链应用的 Go 语言客户端工具包。它提供了与 WES 节点交互的完整接口，支持交易构建、签名、提交以及业务语义封装。
 
+> 💡 **Client SDK vs Contract SDK**：
+> - **Client SDK**（本仓库）：用于链外应用开发（DApp、钱包、浏览器、后端服务），通过 API 与节点交互
+> - **Contract SDK**：用于链上智能合约开发（WASM 合约），运行在 WES 节点上
+> 
+> 详见：[Contract SDK (Go)](https://github.com/weisyn/contract-sdk-go)
+
 ### 核心特性
 
 - ✅ **完整 API 封装** - 封装 HTTP/gRPC/WebSocket 调用
@@ -21,84 +27,130 @@ WES Client SDK 是一个用于开发 WES 区块链应用的 Go 语言客户端�
 
 ## 🏗️ 架构概览
 
-### 整体架构图
+### 在 WES 7 层架构中的位置
 
+`client-sdk-go` 位于 WES 系统的**应用层 & 开发者生态**中的 **SDK 工具链**，通过 **API 网关层**与 WES 节点交互：
+
+```mermaid
+graph TB
+    subgraph DEV_ECOSYSTEM["🎨 应用层 & 开发者生态"]
+        direction TB
+        subgraph SDK_LAYER["SDK 工具链"]
+            direction LR
+            CLIENT_SDK["Client SDK<br/>Go/JS/Python/Java<br/>📱 DApp·钱包·浏览器<br/>⭐ client-sdk-go<br/>链外应用开发"]
+            CONTRACT_SDK["Contract SDK (WASM)<br/>Go/Rust/AS/C<br/>📜 智能合约开发<br/>链上合约开发<br/>github.com/weisyn/contract-sdk-go"]
+            AI_SDK["AI SDK (ONNX)"]
+        end
+        subgraph END_USER_APPS["终端应用"]
+            direction LR
+            WALLET_APP["Wallet<br/>钱包应用"]
+            EXPLORER["Explorer<br/>区块浏览器"]
+            DAPP["DApp<br/>去中心化应用"]
+        end
+    end
+    
+    subgraph API_GATEWAY["🌐 API 网关层"]
+        direction LR
+        JSONRPC["JSON-RPC 2.0<br/>:8545"]
+        HTTP["HTTP REST<br/>/api/v1/*"]
+        GRPC["gRPC<br/>:9090"]
+        WS["WebSocket<br/>:8081"]
+    end
+    
+    subgraph BIZ_LAYER["💼 业务服务层"]
+        APP_SVC["App Service<br/>应用编排·生命周期"]
+    end
+    
+    WALLET_APP --> CLIENT_SDK
+    EXPLORER --> CLIENT_SDK
+    DAPP --> CLIENT_SDK
+    
+    CLIENT_SDK --> JSONRPC
+    CLIENT_SDK --> HTTP
+    CLIENT_SDK --> GRPC
+    CLIENT_SDK --> WS
+    
+    JSONRPC --> APP_SVC
+    HTTP --> APP_SVC
+    GRPC --> APP_SVC
+    WS --> APP_SVC
+    
+    style CLIENT_SDK fill:#81C784,color:#fff,stroke:#4CAF50,stroke-width:3px
+    style API_GATEWAY fill:#64B5F6,color:#fff
+    style BIZ_LAYER fill:#FFB74D,color:#333
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     应用层 (DApp)                            │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │  钱包应用    │  │  DApp 前端   │  │  后端服务    │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│              业务服务层 (services/)                          │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐      │
-│  │  Token   │ │ Staking  │ │  Market  │ │Governance│      │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘      │
-│  ┌──────────┐                                              │
-│  │ Resource │                                              │
-│  └──────────┘                                              │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│              核心客户端层 (client/)                          │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐                    │
-│  │   HTTP   │ │   gRPC   │ │WebSocket│                    │
-│  └──────────┘ └──────────┘ └──────────┘                    │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│              钱包层 (wallet/)                                │
-│  ┌──────────┐ ┌──────────┐                                 │
-│  │  Wallet  │ │ Keystore │                                 │
-│  └──────────┘ └──────────┘                                 │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    WES 节点                                  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │         JSON-RPC API (HTTP/gRPC/WebSocket)           │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+
+> 📖 **完整 WES 架构**：详见 [WES 系统架构文档](https://github.com/weisyn/go-weisyn/blob/main/docs/system/architecture/1-STRUCTURE_VIEW.md#-系统分层架构)  
+> 📜 **Contract SDK**：用于链上智能合约开发，详见 [Contract SDK (Go)](https://github.com/weisyn/contract-sdk-go)
+
+### SDK 内部分层架构
+
+在 SDK 仓库内部，采用清晰的分层设计：
+
+```mermaid
+graph TB
+    subgraph APP_LAYER["应用层 (DApp)"]
+        direction LR
+        WALLET_APP["钱包应用"]
+        DAPP_FRONT["DApp 前端"]
+        BACKEND["后端服务"]
+    end
+    
+    subgraph SERVICES_LAYER["业务服务层 (services/)"]
+        direction LR
+        TOKEN["Token"]
+        STAKING["Staking"]
+        MARKET["Market"]
+        GOVERNANCE["Governance"]
+        RESOURCE["Resource"]
+    end
+    
+    subgraph CLIENT_LAYER["核心客户端层 (client/)"]
+        direction LR
+        HTTP_CLIENT["HTTP"]
+        GRPC_CLIENT["gRPC"]
+        WS_CLIENT["WebSocket"]
+    end
+    
+    subgraph WALLET_LAYER["钱包层 (wallet/)"]
+        direction LR
+        WALLET["Wallet"]
+        KEYSTORE["Keystore"]
+    end
+    
+    subgraph NODE["WES 节点"]
+        JSONRPC_API["JSON-RPC API<br/>(HTTP/gRPC/WebSocket)"]
+    end
+    
+    APP_LAYER --> SERVICES_LAYER
+    SERVICES_LAYER --> CLIENT_LAYER
+    SERVICES_LAYER --> WALLET_LAYER
+    CLIENT_LAYER --> NODE
+    WALLET_LAYER -.签名.-> SERVICES_LAYER
+    
+    style SERVICES_LAYER fill:#4CAF50,color:#fff
+    style CLIENT_LAYER fill:#2196F3,color:#fff
+    style WALLET_LAYER fill:#FF9800,color:#fff
+    style NODE fill:#9C27B0,color:#fff
 ```
 
 ### 交易流程
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    SDK 交易流程                              │
-└─────────────────────────────────────────────────────────────┘
-
-  应用层调用
-      ↓
-  ┌─────────────────┐
-  │ 业务服务方法     │  (如: tokenService.Transfer)
-  └─────────────────┘
-      ↓
-  ┌─────────────────┐
-  │ 构建交易草稿     │  (DraftJSON)
-  └─────────────────┘
-      ↓
-  ┌─────────────────┐
-  │ 调用节点 API    │  (wes_buildTransaction)
-  └─────────────────┘
-      ↓
-  ┌─────────────────┐
-  │ 获取未签名交易   │  (unsignedTx)
-  └─────────────────┘
-      ↓
-  ┌─────────────────┐
-  │ Wallet 签名     │  (wallet.SignTransaction)
-  └─────────────────┘
-      ↓
-  ┌─────────────────┐
-  │ 提交已签名交易   │  (wes_sendRawTransaction)
-  └─────────────────┘
-      ↓
-  ┌─────────────────┐
-  │ 返回交易哈希     │  (txHash)
-  └─────────────────┘
+```mermaid
+graph TD
+    APP["应用层调用"] --> SERVICE["业务服务方法<br/>(如: tokenService.Transfer)"]
+    SERVICE --> DRAFT["构建交易草稿<br/>(DraftJSON)"]
+    DRAFT --> API["调用节点 API<br/>(wes_buildTransaction)"]
+    API --> UNSIGNED["获取未签名交易<br/>(unsignedTx)"]
+    UNSIGNED --> SIGN["Wallet 签名<br/>(wallet.SignHash)"]
+    SIGN --> FINALIZE["完成交易<br/>(wes_finalizeTransactionFromDraft)"]
+    FINALIZE --> SEND["提交已签名交易<br/>(wes_sendRawTransaction)"]
+    SEND --> RESULT["返回交易哈希<br/>(txHash)"]
+    
+    style APP fill:#E3F2FD
+    style SERVICE fill:#C8E6C9
+    style SIGN fill:#FFF9C4
+    style RESULT fill:#F3E5F5
 ```
 
 ### 模块依赖关系
@@ -438,8 +490,10 @@ type Service interface {
 ```
 
 详细 API 文档请参考：
-- [Services 文档](services/README.md) - 业务服务层详细说明
-- [Wallet 文档](wallet/README.md) - 钱包功能详细说明
+- [文档中心](docs/README.md) - 完整文档导航
+- [架构文档](docs/architecture.md) - 架构设计详解
+- [业务服务文档](docs/modules/services.md) - 业务服务层详细说明
+- [钱包文档](docs/modules/wallet.md) - 钱包功能详细说明
 
 ## 🔒 安全考虑
 
@@ -572,12 +626,25 @@ Apache-2.0 License
 
 ## 🔗 相关资源
 
-### WES 生态
+### WES 主链
 
-- [WES 主项目](https://github.com/weisyn/weisyn-core) - WES 区块链核心实现
-- [Contract SDK (Go)](https://github.com/weisyn/contract-sdk-go) - 智能合约开发 SDK（Go/Rust/AS/C）
-- [Client SDK (Go)](https://github.com/weisyn/client-sdk-go) - 客户端 SDK（Go 版本）⭐ 当前仓库
-- [Client SDK (JS/TS)](https://github.com/weisyn/client-sdk-js) - 客户端 SDK（JavaScript/TypeScript 版本）
+- **[WES 主项目](https://github.com/weisyn/go-weisyn)** - WES 区块链核心实现
+  - Go Module: `github.com/weisyn/v1`
+  - [主项目 README](https://github.com/weisyn/go-weisyn/blob/main/README.md) - WES 产品说明
+  - [系统架构文档](https://github.com/weisyn/go-weisyn/blob/main/docs/system/architecture/1-STRUCTURE_VIEW.md) - WES 7 层架构详解
+
+### WES 生态 SDK
+
+#### Client SDK（链外应用开发）
+- **[Client SDK (Go)](https://github.com/weisyn/client-sdk-go)** ⭐ 当前仓库 - 用于链外应用开发（DApp、钱包、浏览器、后端服务）
+- **[Client SDK (JS/TS)](https://github.com/weisyn/client-sdk-js)** - JavaScript/TypeScript 版本
+
+#### Contract SDK（链上合约开发）
+- **[Contract SDK (Go)](https://github.com/weisyn/contract-sdk-go)** - 用于链上智能合约开发（WASM 合约），支持 Go/Rust/AS/C
+
+> 📖 **区别说明**：
+> - **Client SDK**：链外应用通过 JSON-RPC API 与节点交互，不运行在链上
+> - **Contract SDK**：智能合约代码运行在链上（WES 节点），通过 HostABI 与链交互
 
 ### SDK 对比
 
@@ -599,4 +666,4 @@ Apache-2.0 License
 
 ---
 
-**最后更新**: 2025-01-23
+**最后更新**: 2025-11-17

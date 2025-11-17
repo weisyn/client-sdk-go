@@ -6,8 +6,8 @@
 
 - **版本**：1.0
 - **状态**：stable
-- **最后更新**：2025-01-23
-- **最后审核**：2025-01-23
+- **最后更新**：2025-11-17
+- **最后审核**：2025-11-17
 - **所有者**：WES SDK 团队
 - **适用范围**：Market 服务 AMM 功能实现总结
 
@@ -186,7 +186,7 @@ result, err := marketService.RemoveLiquidity(ctx, req, wallet)
 
 ## 🔄 更新记录
 
-### v1.0 (2025-01-23)
+### v1.0 (2025-11-17)
 - ✅ 完成架构分析
 - ✅ 确定实现方案（在请求类型中添加 `AMMContractAddr` 字段）
 - ✅ 实现真实的 SwapAMM、AddLiquidity、RemoveLiquidity 功能

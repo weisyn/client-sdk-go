@@ -1,0 +1,543 @@
+# Services - 业务服务层
+
+**版本**: 1.0.0-alpha  
+**状态**: ✅ 核心功能已完成  
+**最后更新**: 2025-11-17
+
+---
+
+## 📋 概述
+
+业务服务层提供面向业务场景的高层 API，将底层交易复杂性抽象为直观的业务操作。所有服务都遵循统一的设计模式，使用 Wallet 接口进行签名，完全符合架构原则。
+
+---
+
+## 🏗️ 服务架构
+
+### 服务分层图
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  应用层调用                               │
+│  tokenService.Transfer()                                 │
+│  stakingService.Stake()                                  │
+└─────────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────┐
+│              业务服务层 (services/)                       │
+│                                                           │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │ Token Service│  │Staking Service│ │Market Service│   │
+│  │              │  │              │  │              │   │
+│  │ • Transfer   │  │ • Stake      │  │ • SwapAMM    │   │
+│  │ • BatchXfer  │  │ • Unstake    │  │ • AddLiq     │   │
+│  │ • Mint       │  │ • Delegate   │  │ • Vesting    │   │
+│  │ • Burn       │  │ • Claim      │  │ • Escrow     │   │
+│  └──────────────┘  └──────────────┘  └──────────────┘   │
+│                                                           │
+│  ┌──────────────┐  ┌──────────────┐                     │
+│  │Governance    │  │Resource      │                     │
+│  │Service       │  │Service       │                     │
+│  │              │  │              │                     │
+│  │ • Propose    │  │ • Deploy     │                     │
+│  │ • Vote       │  │ • Query      │                     │
+│  └──────────────┘  └──────────────┘                     │
+└─────────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────┐
+│              统一设计模式                                │
+│                                                           │
+│  1. 参数验证                                             │
+│  2. Wallet 获取与验证                                    │
+│  3. 业务逻辑（构建交易）                                 │
+│  4. Wallet 签名                                          │
+│  5. 提交交易 (wes_sendRawTransaction)                    │
+└─────────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────┐
+│              客户端层 (client/)                          │
+│  • HTTP / gRPC / WebSocket                              │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 服务调用流程
+
+```
+┌─────────────────────────────────────────────────────────┐
+│           业务服务调用流程 (以 Transfer 为例)            │
+└─────────────────────────────────────────────────────────┘
+
+应用层
+  │
+  ├─> tokenService.Transfer(ctx, req, wallet)
+  │
+  ↓
+服务层 (services/token/transfer.go)
+  │
+  ├─> 1. 参数验证
+  │   └─> validateTransferRequest(req)
+  │
+  ├─> 2. Wallet 验证
+  │   └─> wallet.Address() == req.From
+  │
+  ├─> 3. 构建交易 (tx_builder.go)
+  │   ├─> 查询 UTXO (wes_getUTXO)
+  │   ├─> 选择 UTXO
+  │   ├─> 计算手续费和找零
+  │   ├─> 构建 DraftJSON
+  │   └─> 调用 wes_buildTransaction
+  │
+  ├─> 4. Wallet 签名
+  │   └─> wallet.SignTransaction(unsignedTx)
+  │
+  ├─> 5. 提交交易
+  │   └─> client.SendRawTransaction(signedTxHex)
+  │
+  ↓
+返回结果
+  └─> TransferResult{TxHash, Success}
+```
+
+---
+
+## 📦 服务列表
+
+### 1. Token 服务 ✅
+
+**路径**: `services/token/`  
+**状态**: ✅ 核心功能已完成
+
+**功能**:
+- ✅ **Transfer** - 单笔转账（SDK 层构建交易）
+- ✅ **BatchTransfer** - 批量转账（**限制：所有转账必须使用同一个 tokenID**）
+- ✅ **Mint** - 代币铸造（调用 `wes_callContract`）
+- ✅ **Burn** - 代币销毁（SDK 层构建交易）
+- ✅ **GetBalance** - 余额查询
+
+**架构说明**:
+```
+Token Service
+    │
+    ├─> Transfer: 新路径（推荐）
+    │   ├─> buildTransferDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> BatchTransfer: 新路径（推荐）
+    │   ├─> buildBatchTransferDraft()
+    │   ├─> wes_computeSignatureHashFromDraft() (多输入)
+    │   └─> wes_finalizeTransactionFromDraft() (多输入签名)
+    │
+    ├─> Mint: 调用合约
+    │   └─> wes_callContract(return_unsigned_tx=true)
+    │
+    └─> Burn: 新路径（推荐）
+        ├─> buildBurnDraft()
+        ├─> wes_computeSignatureHashFromDraft()
+        └─> wes_finalizeTransactionFromDraft()
+    
+    ⚠️ 旧路径已废弃（将在 v2.0.0 移除）:
+    - buildTransferTransaction()
+    - buildBatchTransferTransaction()
+    - buildBurnTransaction()
+```
+
+**使用示例**:
+```go
+tokenService := token.NewService(client)
+
+// 单笔转账
+result, err := tokenService.Transfer(ctx, &token.TransferRequest{
+    From:   fromAddr,
+    To:     toAddr,
+    Amount: 1000,
+    TokenID: nil, // nil = 原生币
+}, wallet)
+
+// 批量转账（所有转账必须使用同一个 tokenID）
+result, err := tokenService.BatchTransfer(ctx, &token.BatchTransferRequest{
+    From: fromAddr,
+    Transfers: []token.TransferItem{
+        {To: addr1, Amount: 100, TokenID: tokenID},
+        {To: addr2, Amount: 200, TokenID: tokenID}, // 必须相同
+    },
+}, wallet)
+```
+
+---
+
+### 2. Staking 服务 ✅
+
+**路径**: `services/staking/`  
+**状态**: ✅ 已迁移到新架构（Draft+Hash+Finalize）
+
+**功能**:
+- ✅ **Stake** - 质押代币（新路径）
+- ✅ **Unstake** - 解除质押（新路径）
+- ✅ **Delegate** - 委托验证者（新路径）
+- ✅ **Undelegate** - 取消委托（新路径）
+- ✅ **ClaimReward** - 领取奖励（新路径）
+- ✅ **Slash** - 罚没（治理功能）
+
+**架构说明**:
+```
+Staking Service
+    │
+    ├─> Stake: 新路径（推荐）
+    │   ├─> buildStakeDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> Unstake: 新路径（推荐）
+    │   ├─> buildUnstakeDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> Delegate: 新路径（推荐）
+    │   ├─> buildDelegateDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> Undelegate: 新路径（推荐）
+    │   ├─> buildUndelegateDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    └─> ClaimReward: 新路径（推荐）
+        ├─> buildClaimRewardDraft()
+        ├─> wes_computeSignatureHashFromDraft()
+        └─> wes_finalizeTransactionFromDraft()
+    
+    ⚠️ 旧路径已废弃（将在 v2.0.0 移除）:
+    - buildStakeTransaction()
+    - buildUnstakeTransaction()
+    - buildDelegateTransaction()
+    - buildUndelegateTransaction()
+    - buildClaimRewardTransaction()
+```
+
+**使用示例**:
+```go
+stakingService := staking.NewService(client)
+
+// 质押
+result, err := stakingService.Stake(ctx, &staking.StakeRequest{
+    From:     stakerAddr,
+    Amount:   10000,
+    Validator: validatorAddr,
+}, wallet)
+```
+
+---
+
+### 3. Market 服务 ✅
+
+**路径**: `services/market/`  
+**状态**: ✅ 已迁移到新架构（Draft+Hash+Finalize）
+
+**功能**:
+- ✅ **SwapAMM** - AMM 代币交换
+- ✅ **AddLiquidity** - 添加流动性
+- ✅ **RemoveLiquidity** - 移除流动性
+- ✅ **CreateVesting** - 创建归属计划（新路径）
+- ✅ **ClaimVesting** - 领取归属代币（新路径）
+- ✅ **CreateEscrow** - 创建托管（新路径）
+- ✅ **ReleaseEscrow** - 释放托管（新路径）
+- ✅ **RefundEscrow** - 退款托管（新路径）
+
+**架构说明**:
+```
+Market Service
+    │
+    ├─> CreateVesting: 新路径（推荐）
+    │   ├─> buildVestingDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> ClaimVesting: 新路径（推荐）
+    │   ├─> buildClaimVestingDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> CreateEscrow: 新路径（推荐）
+    │   ├─> buildEscrowDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> ReleaseEscrow: 新路径（推荐）
+    │   ├─> buildReleaseEscrowDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    └─> RefundEscrow: 新路径（推荐）
+        ├─> buildRefundEscrowDraft()
+        ├─> wes_computeSignatureHashFromDraft()
+        └─> wes_finalizeTransactionFromDraft()
+    
+    ⚠️ 旧路径已废弃（将在 v2.0.0 移除）:
+    - buildVestingTransaction()
+    - buildClaimVestingTransaction()
+    - buildEscrowTransaction()
+    - buildReleaseEscrowTransaction()
+    - buildRefundEscrowTransaction()
+```
+
+---
+
+### 4. Governance 服务 ✅
+
+**路径**: `services/governance/`  
+**状态**: ✅ 已迁移到新架构（Draft+Hash+Finalize）
+
+**功能**:
+- ✅ **Propose** - 创建提案（新路径）
+- ✅ **Vote** - 投票（新路径）
+- ✅ **UpdateParam** - 更新参数（新路径）
+
+**架构说明**:
+```
+Governance Service
+    │
+    ├─> Propose: 新路径（推荐）
+    │   ├─> buildProposeDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    ├─> Vote: 新路径（推荐）
+    │   ├─> buildVoteDraft()
+    │   ├─> wes_computeSignatureHashFromDraft()
+    │   └─> wes_finalizeTransactionFromDraft()
+    │
+    └─> UpdateParam: 新路径（推荐）
+        ├─> buildUpdateParamDraft()
+        ├─> wes_computeSignatureHashFromDraft()
+        └─> wes_finalizeTransactionFromDraft()
+    
+    ⚠️ 旧路径已废弃（将在 v2.0.0 移除）:
+    - buildProposeTransaction()
+    - buildVoteTransaction()
+    - buildUpdateParamTransaction()
+```
+
+---
+
+### 5. Resource 服务 ✅
+
+**路径**: `services/resource/`  
+**状态**: ✅ 基础结构完成
+
+**功能**:
+- ✅ **DeployStaticResource** - 部署静态资源
+- ✅ **DeployContract** - 部署智能合约
+- ✅ **DeployAIModel** - 部署 AI 模型
+- ✅ **GetResource** - 查询资源信息
+
+---
+
+## 🎯 统一设计模式
+
+所有服务都遵循相同的设计模式：
+
+### 1. Service 接口
+
+```go
+type Service interface {
+    Method(ctx context.Context, req *Request, wallets ...wallet.Wallet) (*Result, error)
+}
+```
+
+### 2. 服务结构
+
+```go
+type service struct {
+    client client.Client
+    wallet wallet.Wallet // 可选：默认 Wallet
+}
+```
+
+### 3. 构造函数
+
+```go
+// 不带 Wallet
+func NewService(client client.Client) Service
+
+// 带默认 Wallet
+func NewServiceWithWallet(client client.Client, w wallet.Wallet) Service
+```
+
+### 4. 方法实现模式
+
+```go
+func (s *service) method(ctx context.Context, req *Request, wallets ...wallet.Wallet) (*Result, error) {
+    // 1. 参数验证
+    if err := s.validateRequest(req); err != nil {
+        return nil, err
+    }
+
+    // 2. 获取 Wallet
+    w := s.getWallet(wallets...)
+    if w == nil {
+        return nil, fmt.Errorf("wallet is required")
+    }
+
+    // 3. 验证地址匹配
+    if !bytes.Equal(w.Address(), req.From) {
+        return nil, fmt.Errorf("wallet address does not match from address")
+    }
+
+    // 4. 业务逻辑（构建交易草稿）
+    draftJSON, inputIndex, err := buildDraft(...)
+    
+    // 5. 计算签名哈希
+    hashResult, err := client.Call(ctx, "wes_computeSignatureHashFromDraft", ...)
+    
+    // 6. Wallet 签名哈希
+    sigBytes, err := w.SignHash(hashBytes)
+    
+    // 7. 完成交易
+    finalResult, err := client.Call(ctx, "wes_finalizeTransactionFromDraft", ...)
+    
+    // 8. 提交交易
+    sendResult, err := s.client.SendRawTransaction(ctx, txHex)
+    
+    // 7. 返回结果
+    return &Result{TxHash: sendResult.TxHash, Success: true}, nil
+}
+```
+
+---
+
+## 🔑 关键特性
+
+### 1. Wallet 集成
+
+```
+┌─────────────────────────────────────────┐
+│        Wallet 集成模式                   │
+└─────────────────────────────────────────┘
+
+方式1: 方法参数传递（推荐）
+  tokenService.Transfer(ctx, req, wallet)
+
+方式2: 构造函数设置
+  tokenService := token.NewServiceWithWallet(client, wallet)
+  tokenService.Transfer(ctx, req) // 使用默认 wallet
+
+方式3: 混合使用
+  tokenService := token.NewServiceWithWallet(client, defaultWallet)
+  tokenService.Transfer(ctx, req1)        // 使用默认
+  tokenService.Transfer(ctx, req2, tempWallet) // 临时切换
+```
+
+### 2. 交易构建策略
+
+```
+┌─────────────────────────────────────────┐
+│        交易构建策略                      │
+└─────────────────────────────────────────┘
+
+UTXO 操作 (Transfer, Burn, BatchTransfer):
+  SDK 层构建
+    ├─> 查询 UTXO (wes_getUTXO)
+    ├─> 选择 UTXO
+    ├─> 构建 DraftJSON
+    └─> 调用 wes_buildTransaction
+
+合约调用 (Mint):
+  调用节点 API
+    └─> wes_callContract(return_unsigned_tx=true)
+```
+
+### 3. 批量转账限制
+
+**重要**: 批量转账**必须**使用同一个 tokenID
+
+```
+┌─────────────────────────────────────────┐
+│      批量转账 tokenID 限制               │
+└─────────────────────────────────────────┘
+
+✅ 正确:
+  BatchTransferRequest{
+    Transfers: []TransferItem{
+      {To: addr1, Amount: 100, TokenID: tokenID},
+      {To: addr2, Amount: 200, TokenID: tokenID}, // 相同
+    }
+  }
+
+❌ 错误:
+  BatchTransferRequest{
+    Transfers: []TransferItem{
+      {To: addr1, Amount: 100, TokenID: tokenID1},
+      {To: addr2, Amount: 200, TokenID: tokenID2}, // 不同！
+    }
+  }
+  // 会返回错误: "all transfers must use the same tokenID"
+```
+
+---
+
+## 📊 服务状态统计
+
+| 服务 | 方法数 | 状态 | 说明 |
+|------|--------|------|------|
+| Token | 5 | ✅ | Transfer, BatchTransfer, Mint, Burn, GetBalance |
+| Staking | 6 | ✅ | Stake, Unstake, Delegate, Undelegate, ClaimReward, Slash |
+| Market | 8 | ✅ | SwapAMM, AddLiquidity, RemoveLiquidity, CreateVesting, ClaimVesting, CreateEscrow, ReleaseEscrow, RefundEscrow |
+| Governance | 3 | ✅ | Propose, Vote, UpdateParam |
+| Resource | 4 | ✅ | DeployStaticResource, DeployContract, DeployAIModel, GetResource |
+
+**总计**: 26 个业务方法
+
+---
+
+## 🔧 实现细节
+
+### Token 服务交易构建
+
+**Transfer**:
+```
+1. 查询 UTXO (wes_getUTXO)
+2. 过滤匹配 tokenID 的 UTXO
+3. 选择足够的 UTXO
+4. 计算手续费（万分之三）
+5. 计算找零
+6. 构建 DraftJSON
+7. 调用 wes_buildTransaction
+```
+
+**BatchTransfer**:
+```
+1. 验证所有转账使用同一个 tokenID
+2. 查询 UTXO (wes_getUTXO)
+3. 过滤匹配 tokenID 的 UTXO
+4. 为每个转账选择 UTXO
+5. 累计总输入和总输出
+6. 计算手续费和找零（使用共同 tokenID）
+7. 构建 DraftJSON
+8. 调用 wes_buildTransaction
+```
+
+**Burn**:
+```
+1. 查询 UTXO (wes_getUTXO)
+2. 过滤匹配 tokenID 的 UTXO
+3. 选择足够的 UTXO
+4. 计算手续费
+5. 计算找零（如果有剩余）
+6. 构建 DraftJSON（不创建输出或只创建找零）
+7. 调用 wes_buildTransaction
+```
+
+---
+
+## 📚 参考文档
+
+- [主 README](../README.md) - SDK 总体文档
+- [Wallet 文档](../wallet/README.md) - 钱包功能文档
+- [架构设计文档](../../SDK_DESIGN.md) - SDK 设计文档
+
+---
+
+**最后更新**: 2025-11-17  
+**维护者**: WES Core Team
