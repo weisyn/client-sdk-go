@@ -1,0 +1,25 @@
+# SDK 发布配置文件 - client-sdk-go
+# 路径说明：
+#   dev_path: 开发仓库路径（相对于配置文件所在目录，"." 表示当前目录）
+#   pub_path: 发布仓库路径（相对于工作区根目录，脚本会自动检测 WES/ 目录）
+name: client-sdk-go
+dev_path: "."
+pub_path: "_sdk/client-sdk-go"
+github_repo: "weisyn/client-sdk-go"
+
+# 同步时排除的文件/目录模式
+exclude:
+  - ".git"
+  - "node_modules"
+  - "dist"
+  - "*.log"
+  - ".DS_Store"
+  - ".idea"
+  - "*.swp"
+  - "*.swo"
+  - "_dev"
+  - "_dev_old"
+  - "test"
+  - "*.test"
+  - "coverage"
+
