@@ -2,13 +2,12 @@ package staking
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/weisyn/client-sdk-go/client"
+	"github.com/weisyn/client-sdk-go/utils"
 	"github.com/weisyn/client-sdk-go/wallet"
 )
 
@@ -34,19 +33,20 @@ func slashViaContract(
 		return nil, err
 	}
 
-	// 2. 构建 Slash 方法参数
-	slashParams := map[string]interface{}{
-		"validator_addr": hex.EncodeToString(request.ValidatorAddr),
-		"amount":         request.Amount,
-		"reason":         request.Reason,
+	// 2. 构建 payload（遵循 WES ABI 规范）
+	// 规范来源：weisyn.git/docs/components/core/ispc/abi-and-payload.md
+	payloadOptions := utils.BuildPayloadOptions{
+		MethodParams: map[string]interface{}{
+			"validator_addr": hex.EncodeToString(request.ValidatorAddr),
+			"amount":         request.Amount,
+			"reason":         request.Reason,
+		},
 	}
-
-	payloadJSON, err := json.Marshal(slashParams)
+	
+	payloadBase64, err := utils.BuildAndEncodePayload(payloadOptions)
 	if err != nil {
-		return nil, fmt.Errorf("marshal slash params failed: %w", err)
+		return nil, fmt.Errorf("build payload failed: %w", err)
 	}
-
-	payloadBase64 := base64.StdEncoding.EncodeToString(payloadJSON)
 
 	// 3. 调用 `wes_callContract` API
 	callContractParams := map[string]interface{}{

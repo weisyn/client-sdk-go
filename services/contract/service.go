@@ -2,9 +2,7 @@ package contract
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -93,23 +91,11 @@ func (s *contractService) CallContract(ctx context.Context, req *CallContractReq
 		return nil, fmt.Errorf("wallet is required for contract invocation")
 	}
 
-	// 3. 构建 payload（JSON 编码后 Base64）
-	payload := map[string]interface{}{
-		"method": req.Method,
-		"args":   req.Args,
-	}
-	if req.Amount != nil {
-		payload["amount"] = *req.Amount
-	}
-	if len(req.TokenID) > 0 {
-		payload["tokenID"] = "0x" + hex.EncodeToString(req.TokenID)
-	}
-
-	payloadJSON, err := json.Marshal(payload)
+	// 3. 构建 payload（使用统一的 ABI helper）
+	payloadBase64, err := buildCallPayload(req)
 	if err != nil {
-		return nil, fmt.Errorf("marshal payload failed: %w", err)
+		return nil, fmt.Errorf("build payload failed: %w", err)
 	}
-	payloadBase64 := base64.StdEncoding.EncodeToString(payloadJSON)
 
 	// 4. 调用 wes_callContract，设置 return_unsigned_tx=true
 	contractAddressHex := "0x" + hex.EncodeToString(req.ContractAddress)
@@ -176,17 +162,11 @@ func (s *contractService) QueryContract(ctx context.Context, req *QueryContractR
 		return nil, fmt.Errorf("method name is required")
 	}
 
-	// 2. 构建 payload（JSON 编码后 Base64）
-	payload := map[string]interface{}{
-		"method": req.Method,
-		"args":   req.Args,
-	}
-
-	payloadJSON, err := json.Marshal(payload)
+	// 2. 构建 payload（使用统一的 ABI helper）
+	payloadBase64, err := buildQueryPayload(req)
 	if err != nil {
-		return nil, fmt.Errorf("marshal payload failed: %w", err)
+		return nil, fmt.Errorf("build payload failed: %w", err)
 	}
-	payloadBase64 := base64.StdEncoding.EncodeToString(payloadJSON)
 
 	// 3. 调用 wes_callContract，不设置 return_unsigned_tx（只读查询）
 	contractAddressHex := "0x" + hex.EncodeToString(req.ContractAddress)

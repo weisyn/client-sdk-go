@@ -1,7 +1,7 @@
 # Client SDK Go - API 参考
 
 **版本**: v1.0.0  
-**最后更新**: 2025-01-23
+
 
 ---
 
@@ -745,5 +745,5 @@ func (w *wallet) SignMessage(messageBytes []byte) ([]byte, error)
 
 ---
 
-**最后更新**: 2025-01-23  
+  
 **维护者**: WES Core Team

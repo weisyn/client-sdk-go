@@ -1,0 +1,41 @@
+name: ABI Conformance Check
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  abi-conformance:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      
+      - name: Check for contract-sdk-go dependency
+        run: |
+          if grep -q "contract-sdk-go" go.mod; then
+            echo "❌ 发现违规依赖：client-sdk-go 不得依赖 contract-sdk-go"
+            exit 1
+          fi
+          echo "✅ 未发现违规依赖"
+      
+      - name: Check for contract-sdk-go imports
+        run: |
+          if grep -r "contract-sdk-go" . --exclude-dir=.git --exclude-dir=vendor; then
+            echo "❌ 发现违规导入：client-sdk-go 不得 import contract-sdk-go"
+            exit 1
+          fi
+          echo "✅ 未发现违规导入"
+      
+      - name: Run ABI Helper Conformance Tests
+        run: go test ./services/contract -run TestBuildPayload -v
+

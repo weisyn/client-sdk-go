@@ -20,11 +20,11 @@ func TestParseProblemDetailsFromRPCError(t *testing.T) {
 				"data": map[string]interface{}{
 					"code":        "BC_TX_NOT_FOUND",
 					"layer":       "blockchain-service",
-					"userMessage":  "交易不存在",
-					"detail":       "Transaction with hash 0x1234 not found",
-					"traceId":      "trace-123",
-					"timestamp":    "2025-01-23T10:00:00Z",
-					"status":       404.0,
+					"userMessage": "交易不存在",
+					"detail":      "Transaction with hash 0x1234 not found",
+					"traceId":     "trace-123",
+					"timestamp":   "2025-11-23T10:00:00Z",
+					"status":      404.0,
 					"details": map[string]interface{}{
 						"txHash": "0x1234",
 					},
@@ -131,7 +131,7 @@ func TestNewWesErrorFromProblemDetails(t *testing.T) {
 		Detail:      "Transaction not found",
 		Status:      &status,
 		TraceID:     "trace-123",
-		Timestamp:   "2025-01-23T10:00:00Z",
+		Timestamp:   "2025-11-23T10:00:00Z",
 		Details: map[string]interface{}{
 			"txHash": "0x1234",
 		},
@@ -203,7 +203,7 @@ func TestWesError_ToProblemDetails(t *testing.T) {
 		Detail:      "Transaction not found",
 		Status:      &status,
 		TraceID:     "trace-123",
-		Timestamp:   "2025-01-23T10:00:00Z",
+		Timestamp:   "2025-11-23T10:00:00Z",
 		Details: map[string]interface{}{
 			"txHash": "0x1234",
 		},
@@ -303,4 +303,3 @@ type testError struct {
 func (e *testError) Error() string {
 	return e.msg
 }
-

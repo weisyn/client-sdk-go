@@ -1,7 +1,7 @@
 # WES 客户端应用开发指南 - Go SDK 视角
 
 **版本**: v1.0.0  
-**最后更新**: 2025-01-23
+
 
 ---
 
@@ -599,5 +599,5 @@ resources, err := wesClient.BatchGetResources(ctx, resourceIDs)
 
 ---
 
-**最后更新**: 2025-01-23  
+  
 **维护者**: WES Core Team

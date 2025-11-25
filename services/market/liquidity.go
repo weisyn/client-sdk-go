@@ -3,9 +3,7 @@ package market
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -51,21 +49,23 @@ func (s *marketService) addLiquidity(ctx context.Context, req *AddLiquidityReque
 		return nil, fmt.Errorf("invalid AMM contract address: expected 32 bytes (contentHash), got %d bytes", len(ammContractHash))
 	}
 
-	// 5. 构建 addLiquidity 方法的参数（通过 payload）
-	addLiquidityParams := map[string]interface{}{
-		"from":    hex.EncodeToString(req.From),
-		"tokenA":  hex.EncodeToString(req.TokenA),
-		"tokenB":  hex.EncodeToString(req.TokenB),
-		"amountA": req.AmountA,
-		"amountB": req.AmountB,
+	// 5. 构建 payload（遵循 WES ABI 规范）
+	// 规范来源：weisyn.git/docs/components/core/ispc/abi-and-payload.md
+	payloadOptions := utils.BuildPayloadOptions{
+		IncludeFrom: true,
+		From:        req.From,
+		MethodParams: map[string]interface{}{
+			"tokenA":  hex.EncodeToString(req.TokenA),
+			"tokenB":  hex.EncodeToString(req.TokenB),
+			"amountA": req.AmountA,
+			"amountB": req.AmountB,
+		},
 	}
-
-	// 将参数编码为 JSON，然后 Base64 编码
-	payloadJSON, err := json.Marshal(addLiquidityParams)
+	
+	payloadBase64, err := utils.BuildAndEncodePayload(payloadOptions)
 	if err != nil {
-		return nil, fmt.Errorf("marshal addLiquidity params failed: %w", err)
+		return nil, fmt.Errorf("build payload failed: %w", err)
 	}
-	payloadBase64 := base64.StdEncoding.EncodeToString(payloadJSON)
 
 	// 6. 调用 wes_callContract API，设置 return_unsigned_tx=true
 	callContractParams := map[string]interface{}{
@@ -194,19 +194,21 @@ func (s *marketService) removeLiquidity(ctx context.Context, req *RemoveLiquidit
 		return nil, fmt.Errorf("invalid AMM contract address: expected 32 bytes (contentHash), got %d bytes", len(ammContractHash))
 	}
 
-	// 5. 构建 removeLiquidity 方法的参数（通过 payload）
-	removeLiquidityParams := map[string]interface{}{
-		"from":        hex.EncodeToString(req.From),
-		"liquidityID": hex.EncodeToString(req.LiquidityID),
-		"amount":      req.Amount,
+	// 5. 构建 payload（遵循 WES ABI 规范）
+	// 规范来源：weisyn.git/docs/components/core/ispc/abi-and-payload.md
+	payloadOptions := utils.BuildPayloadOptions{
+		IncludeFrom: true,
+		From:        req.From,
+		MethodParams: map[string]interface{}{
+			"liquidityID": hex.EncodeToString(req.LiquidityID),
+			"amount":      req.Amount,
+		},
 	}
-
-	// 将参数编码为 JSON，然后 Base64 编码
-	payloadJSON, err := json.Marshal(removeLiquidityParams)
+	
+	payloadBase64, err := utils.BuildAndEncodePayload(payloadOptions)
 	if err != nil {
-		return nil, fmt.Errorf("marshal removeLiquidity params failed: %w", err)
+		return nil, fmt.Errorf("build payload failed: %w", err)
 	}
-	payloadBase64 := base64.StdEncoding.EncodeToString(payloadJSON)
 
 	// 6. 调用 wes_callContract API，设置 return_unsigned_tx=true
 	callContractParams := map[string]interface{}{

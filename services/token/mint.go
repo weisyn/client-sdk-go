@@ -3,13 +3,13 @@ package token
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/weisyn/client-sdk-go/utils"
 	"github.com/weisyn/client-sdk-go/wallet"
 )
 
@@ -46,28 +46,33 @@ func (s *tokenService) mint(ctx context.Context, req *MintRequest, wallets ...wa
 		return nil, fmt.Errorf("contract contentHash must be 32 bytes")
 	}
 
-	// 4. 构建 mint 方法的参数（通过 payload）
-	mintParams := map[string]interface{}{
-		"to":     hex.EncodeToString(req.To),
-		"amount": req.Amount,
-	}
-	if len(req.TokenID) > 0 {
-		mintParams["tokenID"] = hex.EncodeToString(req.TokenID)
+	// 4. 构建 payload（遵循 WES ABI 规范）
+	// 规范来源：weisyn.git/docs/components/core/ispc/abi-and-payload.md
+	payloadOptions := utils.BuildPayloadOptions{
+		IncludeFrom:   true,
+		From:          w.Address(),
+		IncludeTo:     true,
+		To:            req.To,
+		IncludeAmount: true,
+		Amount:        req.Amount,
 	}
 
-	// 将参数编码为 JSON，然后 Base64 编码
-	payloadJSON, err := json.Marshal(mintParams)
-	if err != nil {
-		return nil, fmt.Errorf("marshal mint params failed: %w", err)
+	if len(req.TokenID) > 0 {
+		payloadOptions.IncludeTokenID = true
+		payloadOptions.TokenID = req.TokenID
 	}
-	payloadBase64 := base64.StdEncoding.EncodeToString(payloadJSON)
+
+	payloadBase64, err := utils.BuildAndEncodePayload(payloadOptions)
+	if err != nil {
+		return nil, fmt.Errorf("build payload failed: %w", err)
+	}
 
 	// 5. 调用 wes_callContract API，设置 return_unsigned_tx=true
 	callContractParams := map[string]interface{}{
-		"content_hash":      hex.EncodeToString(contentHash),
-		"method":            "mint",
-		"params":            []uint64{}, // WASM 原生参数（空，使用 payload）
-		"payload":           payloadBase64,
+		"content_hash":       hex.EncodeToString(contentHash),
+		"method":             "mint",
+		"params":             []uint64{}, // WASM 原生参数（空，使用 payload）
+		"payload":            payloadBase64,
 		"return_unsigned_tx": true,
 	}
 
@@ -216,12 +221,12 @@ func (s *tokenService) burn(ctx context.Context, req *BurnRequest, wallets ...wa
 
 	// 8. 调用 wes_finalizeTransactionFromDraft 生成带 SingleKeyProof 的交易
 	finalizeParams := map[string]interface{}{
-		"draft":       json.RawMessage(draftJSON),
-		"unsignedTx":  unsignedTxHex,
-		"input_index": inputIndex,
+		"draft":        json.RawMessage(draftJSON),
+		"unsignedTx":   unsignedTxHex,
+		"input_index":  inputIndex,
 		"sighash_type": "SIGHASH_ALL",
-		"pubkey":      "0x" + hex.EncodeToString(pubCompressed),
-		"signature":   "0x" + hex.EncodeToString(sigBytes),
+		"pubkey":       "0x" + hex.EncodeToString(pubCompressed),
+		"signature":    "0x" + hex.EncodeToString(sigBytes),
 	}
 	finalResult, err := s.client.Call(ctx, "wes_finalizeTransactionFromDraft", finalizeParams)
 	if err != nil {
@@ -274,4 +279,3 @@ func (s *tokenService) validateBurnRequest(req *BurnRequest) error {
 
 	return nil
 }
-

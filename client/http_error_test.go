@@ -31,7 +31,7 @@ func TestHTTPClient_ErrorHandling(t *testing.T) {
 						"userMessage": "交易不存在",
 						"detail": "Transaction not found",
 						"traceId": "trace-123",
-						"timestamp": "2025-01-23T10:00:00Z",
+						"timestamp": "2025-11-23T10:00:00Z",
 						"status": 404
 					}
 				},
@@ -86,7 +86,7 @@ func TestHTTPClient_ErrorHandling(t *testing.T) {
 				"userMessage": "交易不存在",
 				"detail": "Transaction not found",
 				"traceId": "trace-123",
-				"timestamp": "2025-01-23T10:00:00Z",
+				"timestamp": "2025-11-23T10:00:00Z",
 				"status": 404
 			}`,
 			statusCode:   404,
@@ -152,7 +152,7 @@ func TestParseProblemDetailsFromRPCError(t *testing.T) {
 			"layer":       "blockchain-service",
 			"userMessage": "交易不存在",
 			"traceId":     "trace-123",
-			"timestamp":   "2025-01-23T10:00:00Z",
+			"timestamp":   "2025-11-23T10:00:00Z",
 		},
 	}
 
@@ -182,4 +182,3 @@ func TestParseProblemDetailsFromRPCError(t *testing.T) {
 		t.Errorf("expected layer blockchain-service, got %s", pd.Layer)
 	}
 }
-

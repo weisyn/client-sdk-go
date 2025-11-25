@@ -3,9 +3,7 @@ package market
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -51,22 +49,23 @@ func (s *marketService) swapAMM(ctx context.Context, req *SwapRequest, wallets .
 		return nil, fmt.Errorf("invalid AMM contract address: expected 32 bytes (contentHash), got %d bytes", len(ammContractHash))
 	}
 
-	// 5. 构建 swap 方法的参数（通过 payload）
-	// 注意：以下代码在提供 AMM 合约地址后可以使用
-	swapParams := map[string]interface{}{
-		"from":          hex.EncodeToString(req.From),
-		"tokenIn":      hex.EncodeToString(req.TokenIn),
-		"tokenOut":     hex.EncodeToString(req.TokenOut),
-		"amountIn":     req.AmountIn,
-		"amountOutMin": req.AmountOutMin,
+	// 5. 构建 payload（遵循 WES ABI 规范）
+	// 规范来源：weisyn.git/docs/components/core/ispc/abi-and-payload.md
+	payloadOptions := utils.BuildPayloadOptions{
+		IncludeFrom: true,
+		From:        req.From,
+		MethodParams: map[string]interface{}{
+			"tokenIn":      hex.EncodeToString(req.TokenIn),
+			"tokenOut":     hex.EncodeToString(req.TokenOut),
+			"amountIn":     req.AmountIn,
+			"amountOutMin": req.AmountOutMin,
+		},
 	}
-
-	// 将参数编码为 JSON，然后 Base64 编码
-	payloadJSON, err := json.Marshal(swapParams)
+	
+	payloadBase64, err := utils.BuildAndEncodePayload(payloadOptions)
 	if err != nil {
-		return nil, fmt.Errorf("marshal swap params failed: %w", err)
+		return nil, fmt.Errorf("build payload failed: %w", err)
 	}
-	payloadBase64 := base64.StdEncoding.EncodeToString(payloadJSON)
 
 	// 6. 调用 wes_callContract API，设置 return_unsigned_tx=true
 	callContractParams := map[string]interface{}{

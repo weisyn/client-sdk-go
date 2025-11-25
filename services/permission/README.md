@@ -114,5 +114,5 @@ unsignedTx, err := permission.BuildTransferOwnershipTx(ctx, client, intent)
 
 ---
 
-**最后更新**: 2025-01-XX
+**最后更新**: 2025-11-XX
 
