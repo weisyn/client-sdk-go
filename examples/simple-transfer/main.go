@@ -8,6 +8,7 @@ import (
 
 	"github.com/weisyn/client-sdk-go/client"
 	"github.com/weisyn/client-sdk-go/services/token"
+	"github.com/weisyn/client-sdk-go/types"
 	"github.com/weisyn/client-sdk-go/wallet"
 )
 
@@ -52,10 +53,28 @@ func main() {
 		To:     toAddr,
 		Amount: 1000, // 转账金额
 		TokenID: nil, // nil表示原生币
-	})
+	}, wallet)
 	
 	if err != nil {
-		log.Fatalf("转账失败: %v", err)
+		// 检查是否是 WES Error
+		if wesErr, ok := types.IsWesError(err); ok {
+			log.Printf("转账失败 [%s]: %s", wesErr.Code, wesErr.UserMessage)
+			log.Printf("技术详情: %s", wesErr.Detail)
+			log.Printf("追踪ID: %s", wesErr.TraceID)
+			
+			// 根据错误码进行不同处理
+			switch wesErr.Code {
+			case "BC_INSUFFICIENT_BALANCE":
+				log.Println("余额不足，请检查账户余额")
+			case "BC_TX_VALIDATION_FAILED":
+				log.Println("交易验证失败，请检查交易参数")
+			default:
+				log.Printf("其他错误: %s", wesErr.Detail)
+			}
+		} else {
+			log.Fatalf("转账失败: %v", err)
+		}
+		return
 	}
 
 	fmt.Printf("转账成功！\n")

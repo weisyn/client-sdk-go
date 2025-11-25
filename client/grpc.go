@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"github.com/weisyn/client-sdk-go/types"
 )
 
 // grpcClient gRPC 客户端实现
@@ -58,14 +59,28 @@ func NewGRPCClient(config *Config) (Client, error) {
 //
 // 注意：当前实现假设节点提供 gRPC 接口，如果节点只提供 JSON-RPC over HTTP，
 // 则 gRPC 客户端需要通过 HTTP 适配器实现。
+//
+// 错误处理：当 gRPC 实现完成后，将统一使用 types.WesError 进行错误处理
 func (c *grpcClient) Call(ctx context.Context, method string, params interface{}) (interface{}, error) {
 	// TODO: 实现 gRPC 调用
 	// 当前简化实现，返回错误提示
 	// 实际实现需要：
 	// 1. 定义 gRPC 服务接口（如果节点提供）
 	// 2. 或者通过 HTTP 适配器调用 JSON-RPC API
-	return nil, fmt.Errorf("gRPC client not fully implemented yet. " +
-		"Please use HTTP or WebSocket client, or implement gRPC service interface")
+	// 3. 统一使用 types.ParseProblemDetailsFromRPCError 解析错误
+	// 4. 统一使用 types.NewWesErrorFromProblemDetails 创建 WesError
+	
+	// 当前返回一个明确的错误，说明 gRPC 客户端尚未完全实现
+	return nil, types.CreateDefaultWesError(
+		types.ErrorCodeSDKGRPCError,
+		"gRPC 客户端尚未完全实现",
+		"gRPC client not fully implemented yet. Please use HTTP or WebSocket client, or implement gRPC service interface",
+		501, // Not Implemented
+		map[string]interface{}{
+			"endpoint": c.endpoint,
+			"method":   method,
+		},
+	)
 }
 
 // SendRawTransaction 发送已签名的原始交易
@@ -118,7 +133,8 @@ func (c *grpcClient) Subscribe(ctx context.Context, filter *EventFilter) (<-chan
 	// 调用订阅方法
 	result, err := c.Call(ctx, "wes_subscribe", []interface{}{params})
 	if err != nil {
-		return nil, fmt.Errorf("subscribe failed: %w", err)
+		// 错误已经通过 Call 方法统一处理为 WesError
+		return nil, err
 	}
 
 	// 解析订阅 ID

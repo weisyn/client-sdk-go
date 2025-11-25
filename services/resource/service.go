@@ -20,6 +20,18 @@ type Service interface {
 
 	// GetResource 获取资源信息（不需要 Wallet）
 	GetResource(ctx context.Context, contentHash []byte) (*ResourceInfo, error)
+
+	// GetResources 获取资源列表（支持过滤和分页）
+	GetResources(ctx context.Context, filters *ResourceFilters) ([]*ResourceInfo, error)
+
+	// ListResources 列出资源列表（新版本，使用 ResourceView）
+	ListResources(ctx context.Context, filters *ResourceFilters) ([]*ResourceView, error)
+
+	// GetResourceView 获取资源视图（新版本，使用 ResourceView）
+	GetResourceView(ctx context.Context, contentHash []byte) (*ResourceView, error)
+
+	// GetResourceHistory 获取资源历史
+	GetResourceHistory(ctx context.Context, contentHash []byte, offset, limit int) (*ResourceHistory, error)
 }
 
 // resourceService Resource 服务实现
@@ -71,6 +83,13 @@ type DeployContractRequest struct {
 	WasmPath     string // WASM文件路径
 	ContractName string // 合约名称
 	InitArgs     []byte // 初始化参数
+	
+	// ✅ 新增：锁定条件列表
+	LockingConditions []LockingCondition
+	
+	// ✅ 新增：锁定条件验证选项
+	ValidateLockingConditions bool  // 是否在SDK层验证（默认true）
+	AllowContractLockCycles    bool  // 是否允许ContractLock循环（默认false）
 }
 
 // DeployContractResult 部署合约结果
@@ -93,6 +112,14 @@ type DeployAIModelResult struct {
 	ContentHash []byte // 内容哈希
 	TxHash      string // 交易哈希
 	Success     bool   // 是否成功
+}
+
+// ResourceFilters 资源查询过滤器
+type ResourceFilters struct {
+	ResourceType string   // 资源类型过滤："contract" | "model" | "static"
+	Owner        []byte   // 创建者地址过滤（hex 字节）
+	Limit        int      // 返回数量限制（默认50，最大200）
+	Offset       int      // 偏移量（默认0）
 }
 
 // ResourceInfo 资源信息
@@ -122,4 +149,9 @@ func (s *resourceService) DeployAIModel(ctx context.Context, req *DeployAIModelR
 // GetResource 获取资源信息（实现在query.go）
 func (s *resourceService) GetResource(ctx context.Context, contentHash []byte) (*ResourceInfo, error) {
 	return s.getResource(ctx, contentHash)
+}
+
+// GetResources 获取资源列表（实现在query.go）
+func (s *resourceService) GetResources(ctx context.Context, filters *ResourceFilters) ([]*ResourceInfo, error) {
+	return s.getResources(ctx, filters)
 }

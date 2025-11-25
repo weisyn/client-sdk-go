@@ -159,27 +159,40 @@ func (s *resourceService) deployContract(ctx context.Context, req *DeployContrac
 		return nil, err
 	}
 
-	// 2. 获取 Wallet
+	// 2. ✅ 验证锁定条件（如果提供）
+	if len(req.LockingConditions) > 0 {
+		shouldValidate := req.ValidateLockingConditions
+		if !shouldValidate {
+			shouldValidate = true // 默认 true
+		}
+		if shouldValidate {
+			if err := validateLockingConditions(req.LockingConditions, req.AllowContractLockCycles); err != nil {
+				return nil, fmt.Errorf("invalid locking conditions: %w", err)
+			}
+		}
+	}
+
+	// 3. 获取 Wallet
 	w := s.getWallet(wallets...)
 	if w == nil {
 		return nil, fmt.Errorf("wallet is required")
 	}
 
-	// 3. 验证地址匹配
+	// 4. 验证地址匹配
 	if !bytes.Equal(w.Address(), req.From) {
 		return nil, fmt.Errorf("wallet address does not match from address")
 	}
 
-	// 4. 读取 WASM 文件
+	// 5. 读取 WASM 文件
 	wasmBytes, err := os.ReadFile(req.WasmPath)
 	if err != nil {
 		return nil, fmt.Errorf("read WASM file failed: %w", err)
 	}
 
-	// 5. Base64 编码 WASM 内容
+	// 6. Base64 编码 WASM 内容
 	wasmContentBase64 := base64.StdEncoding.EncodeToString(wasmBytes)
 
-	// 6. 获取私钥（用于 API 调用）
+	// 7. 获取私钥（用于 API 调用）
 	privateKey := w.PrivateKey()
 	if privateKey == nil {
 		return nil, fmt.Errorf("wallet private key not available")
@@ -194,14 +207,27 @@ func (s *resourceService) deployContract(ctx context.Context, req *DeployContrac
 	}
 	privateKeyHex := hex.EncodeToString(privateKeyBytes)
 
-	// 7. 调用 `wes_deployContract` API
+	// 8. ✅ 构造锁定条件（转换为 proto 格式）
+	var lockingConditionsProto []interface{}
+	if len(req.LockingConditions) > 0 {
+		lockingConditionsProto, err = convertLockingConditionsToProto(req.LockingConditions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert locking conditions: %w", err)
+		}
+	} else {
+		// 默认：单密钥锁（部署者地址）
+		lockingConditionsProto = createDefaultSingleKeyLock(w.Address())
+	}
+
+	// 9. 调用 `wes_deployContract` API
 	// 注意：当前 API 需要 private_key，如果未来支持 return_unsigned_tx，可以改为使用 Wallet 签名
 	deployParams := map[string]interface{}{
-		"private_key":  privateKeyHex,
-		"wasm_content": wasmContentBase64,
-		"abi_version":  "v1", // 默认 ABI 版本
-		"name":         req.ContractName,
-		"description":  "", // 可选
+		"private_key":        privateKeyHex,
+		"wasm_content":      wasmContentBase64,
+		"abi_version":       "v1", // 默认 ABI 版本
+		"name":              req.ContractName,
+		"description":       "", // 可选
+		"locking_conditions": lockingConditionsProto, // ✅ 新增字段
 	}
 
 	// 如果有初始化参数，添加到 payload 中

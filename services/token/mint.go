@@ -267,12 +267,9 @@ func (s *tokenService) validateBurnRequest(req *BurnRequest) error {
 		return fmt.Errorf("amount must be greater than 0")
 	}
 
-	// 3. 验证TokenID（必需）
-	if req.TokenID == nil {
-		return fmt.Errorf("tokenID is required")
-	}
-	if len(req.TokenID) != 32 {
-		return fmt.Errorf("tokenID must be 32 bytes")
+	// 3. 验证TokenID（nil 表示原生币，非 nil 必须是 32 字节）
+	if req.TokenID != nil && len(req.TokenID) != 32 {
+		return fmt.Errorf("tokenID must be 32 bytes or nil (for native coin)")
 	}
 
 	return nil

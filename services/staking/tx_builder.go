@@ -552,6 +552,9 @@ func buildUnstakeDraft(
 	}
 
 	// 3. 查找对应的质押 UTXO
+	// 注意：StakeID 可能包含 0x 前缀，但节点返回的 outpoint 可能不包含
+	// 需要规范化比较
+	stakeIDNormalized := strings.TrimPrefix(stakeIDStr, "0x")
 	var stakeUTXO *UTXO
 	for _, item := range utxosArray {
 		utxoMap, ok := item.(map[string]interface{})
@@ -559,7 +562,9 @@ func buildUnstakeDraft(
 			continue
 		}
 		outpoint := getString(utxoMap, "outpoint")
-		if outpoint == stakeIDStr {
+		outpointNormalized := strings.TrimPrefix(outpoint, "0x")
+		// 比较规范化后的 outpoint（去掉 0x 前缀）
+		if outpointNormalized == stakeIDNormalized || outpoint == stakeIDStr {
 			stakeUTXO = &UTXO{
 				Outpoint: outpoint,
 				Height:   getString(utxoMap, "height"),
@@ -691,6 +696,9 @@ func buildUnstakeTransaction(
 	}
 
 	// 3. 查找对应的质押 UTXO
+	// 注意：StakeID 可能包含 0x 前缀，但节点返回的 outpoint 可能不包含
+	// 需要规范化比较
+	stakeIDNormalized := strings.TrimPrefix(stakeIDStr, "0x")
 	var stakeUTXO *UTXO
 	for _, item := range utxosArray {
 		utxoMap, ok := item.(map[string]interface{})
@@ -698,7 +706,9 @@ func buildUnstakeTransaction(
 			continue
 		}
 		outpoint := getString(utxoMap, "outpoint")
-		if outpoint == stakeIDStr {
+		outpointNormalized := strings.TrimPrefix(outpoint, "0x")
+		// 比较规范化后的 outpoint（去掉 0x 前缀）
+		if outpointNormalized == stakeIDNormalized || outpoint == stakeIDStr {
 			stakeUTXO = &UTXO{
 				Outpoint: outpoint,
 				Height:   getString(utxoMap, "height"),

@@ -90,29 +90,38 @@ func equalBytes(a, b []byte) bool {
 	return true
 }
 
-// AddressHexToBase58 将十六进制地址字符串转换为 Base58Check 编码
+// AddressHexToBase58 将十六进制地址转换为 Base58Check 编码
+// 注意：此函数仅用于兼容性，WES SDK 推荐使用 Base58 格式
+// hexAddr 可以是带 0x 前缀或不带前缀的十六进制字符串（40个字符，20字节）
 func AddressHexToBase58(hexAddr string) (string, error) {
-	// 移除 0x 前缀
-	if len(hexAddr) > 2 && hexAddr[:2] == "0x" {
+	// 移除 0x 前缀（如果存在）
+	if len(hexAddr) >= 2 && hexAddr[:2] == "0x" {
 		hexAddr = hexAddr[2:]
 	}
 
-	// 解码十六进制
+	// 解析十六进制字符串为字节数组
 	addressBytes, err := hex.DecodeString(hexAddr)
 	if err != nil {
 		return "", fmt.Errorf("invalid hex address: %w", err)
 	}
 
+	// 验证长度：20 字节
+	if len(addressBytes) != 20 {
+		return "", fmt.Errorf("invalid hex address length: expected 40 hex characters (20 bytes), got %d bytes", len(addressBytes))
+	}
+
+	// 转换为 Base58
 	return AddressBytesToBase58(addressBytes)
 }
 
-// AddressBase58ToHex 将 Base58Check 编码地址转换为十六进制字符串
+// AddressBase58ToHex 将 Base58Check 编码地址转换为十六进制格式（带 0x 前缀）
+// 注意：此函数仅用于兼容性，WES SDK 推荐使用 Base58 格式
 func AddressBase58ToHex(base58Addr string) (string, error) {
 	addressBytes, err := AddressBase58ToBytes(base58Addr)
 	if err != nil {
 		return "", err
 	}
-
-	return hex.EncodeToString(addressBytes), nil
+	// 转换为十六进制，带 0x 前缀
+	return fmt.Sprintf("0x%x", addressBytes), nil
 }
 

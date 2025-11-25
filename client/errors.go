@@ -1,6 +1,10 @@
 package client
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/weisyn/client-sdk-go/types"
+)
 
 // Error 客户端错误
 type Error struct {
@@ -18,6 +22,22 @@ func (e *Error) Error() string {
 
 func (e *Error) Unwrap() error {
 	return e.Err
+}
+
+// IsWesError 检查错误是否为 WES Error
+// 推荐使用：优先检查 types.WesError
+func IsWesError(err error) (*types.WesError, bool) {
+	return types.IsWesError(err)
+}
+
+// IsProblemDetails 检查错误是否为旧的 Problem Details 格式（已废弃）
+// 保留此函数以保持向后兼容，但推荐使用 IsWesError
+// Deprecated: 使用 types.IsWesError 代替
+func IsProblemDetails(err error) (*ProblemDetails, bool) {
+	if pd, ok := err.(*ProblemDetails); ok {
+		return pd, true
+	}
+	return nil, false
 }
 
 // 错误码定义

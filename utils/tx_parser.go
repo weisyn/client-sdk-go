@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
-	"strings"
 
 	"github.com/weisyn/client-sdk-go/client"
 )
@@ -42,17 +41,13 @@ type ParsedOutput struct {
 	Outpoint  string // 格式: "txHash:index"
 }
 
-// parseOwnerAddress 解析 owner 地址，支持 Base64 和十六进制格式
+// parseOwnerAddress 解析 owner 地址，仅支持 Base64 格式（WES 标准格式）
 func parseOwnerAddress(ownerStr string) []byte {
 	if ownerStr == "" {
 		return nil
 	}
-	// 尝试 Base64 解码（WES API 返回的格式）
+	// 仅支持 Base64 解码（WES API 返回的标准格式）
 	if ownerBytes, err := base64.StdEncoding.DecodeString(ownerStr); err == nil && len(ownerBytes) == 20 {
-		return ownerBytes
-	}
-	// 尝试十六进制解码（兼容其他格式）
-	if ownerBytes, err := hex.DecodeString(strings.TrimPrefix(ownerStr, "0x")); err == nil && len(ownerBytes) == 20 {
 		return ownerBytes
 	}
 	return nil
@@ -68,8 +63,8 @@ func parseOwnerAddress(ownerStr string) []byte {
 // 2. 解析交易结构，提取 inputs 和 outputs
 // 3. 计算每个输出的 outpoint（txHash:index）
 func FetchAndParseTx(ctx context.Context, client client.Client, txHash string) (*ParsedTx, error) {
-	// 1. 移除 0x 前缀
-	txHashClean := strings.TrimPrefix(txHash, "0x")
+	// 1. 使用交易哈希（WES 使用标准十六进制格式，不带 0x 前缀）
+	txHashClean := txHash
 
 	// 2. 调用 wes_getTransactionByHash
 	result, err := client.Call(ctx, "wes_getTransactionByHash", []interface{}{txHashClean})
@@ -92,8 +87,11 @@ func FetchAndParseTx(ctx context.Context, client client.Client, txHash string) (
 
 	blockHeight := uint64(0)
 	if bh, ok := resultMap["blockHeight"].(string); ok && bh != "" {
-		// 移除 0x 前缀并解析为十六进制
-		bhClean := strings.TrimPrefix(bh, "0x")
+		// 解析为十六进制（支持 0x 前缀）
+		bhClean := bh
+		if len(bhClean) > 2 && bhClean[:2] == "0x" {
+			bhClean = bhClean[2:]
+		}
 		if parsed, err := strconv.ParseUint(bhClean, 16, 64); err == nil {
 			blockHeight = parsed
 		}
@@ -102,9 +100,8 @@ func FetchAndParseTx(ctx context.Context, client client.Client, txHash string) (
 	blockHash, _ := resultMap["blockHash"].(string)
 	txIndex := uint32(0)
 	if ti, ok := resultMap["transactionIndex"].(string); ok && ti != "" {
-		// 移除 0x 前缀并解析为十六进制
-		tiClean := strings.TrimPrefix(ti, "0x")
-		if parsed, err := strconv.ParseUint(tiClean, 16, 32); err == nil {
+		// 解析为十六进制（WES 标准格式，不带 0x 前缀）
+		if parsed, err := strconv.ParseUint(ti, 16, 32); err == nil {
 			txIndex = uint32(parsed)
 		}
 	}
@@ -177,7 +174,8 @@ func FetchAndParseTx(ctx context.Context, client client.Client, txHash string) (
 				// 检查是否是合约代币
 				if contractToken, ok := asset["contract_token"].(map[string]interface{}); ok {
 					tokenIDStr, _ := contractToken["fungible_class_id"].(string)
-					if tokenIDBytes, err := hex.DecodeString(strings.TrimPrefix(tokenIDStr, "0x")); err == nil {
+					// WES 标准格式，不带 0x 前缀
+					if tokenIDBytes, err := hex.DecodeString(tokenIDStr); err == nil {
 						output.TokenID = tokenIDBytes
 					}
 				}
@@ -185,12 +183,14 @@ func FetchAndParseTx(ctx context.Context, client client.Client, txHash string) (
 				output.Type = "state"
 
 				stateIDStr, _ := state["state_id"].(string)
-				if stateIDBytes, err := hex.DecodeString(strings.TrimPrefix(stateIDStr, "0x")); err == nil {
+				// WES 标准格式，不带 0x 前缀
+				if stateIDBytes, err := hex.DecodeString(stateIDStr); err == nil {
 					output.StateID = stateIDBytes
 				}
 
 				execResultHashStr, _ := state["execution_result_hash"].(string)
-				if execResultHashBytes, err := hex.DecodeString(strings.TrimPrefix(execResultHashStr, "0x")); err == nil {
+				// WES 标准格式，不带 0x 前缀
+				if execResultHashBytes, err := hex.DecodeString(execResultHashStr); err == nil {
 					output.StateData = execResultHashBytes
 				}
 			} else if _, ok := outputMap["resource"].(map[string]interface{}); ok {
@@ -264,6 +264,6 @@ func FindStateOutputs(outputs []ParsedOutput) []ParsedOutput {
 
 // GetOutpoint 生成 outpoint 字符串
 func GetOutpoint(txHash string, index uint32) string {
-	txHashClean := strings.TrimPrefix(txHash, "0x")
-	return fmt.Sprintf("%s:%d", txHashClean, index)
+	// WES 标准格式，不带 0x 前缀
+	return fmt.Sprintf("%s:%d", txHash, index)
 }

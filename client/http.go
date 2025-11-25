@@ -9,7 +9,17 @@ import (
 	"net/http"
 	"sync/atomic"
 	"time"
+
+	"github.com/weisyn/client-sdk-go/types"
 )
+
+// getString 从 map 中安全获取字符串值
+func getString(m map[string]interface{}, key, defaultValue string) string {
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return defaultValue
+}
 
 // httpClient HTTP客户端实现
 type httpClient struct {
@@ -153,7 +163,27 @@ func (c *httpClient) Call(ctx context.Context, method string, params interface{}
 
 	// 检查HTTP状态码
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP error: %d, body: %s", resp.StatusCode, string(respBody))
+		// 优先尝试解析 Problem Details
+		contentType := resp.Header.Get("Content-Type")
+		if contentType == "application/problem+json" || contentType == "application/json" {
+			var problemDetails types.WesProblemDetails
+			if err := json.Unmarshal(respBody, &problemDetails); err == nil {
+				// 验证必填字段
+				if problemDetails.Code != "" && problemDetails.Layer != "" && 
+				   problemDetails.UserMessage != "" && problemDetails.TraceID != "" {
+					// 转换为 WesError
+					wesError := types.NewWesErrorFromProblemDetails(&problemDetails)
+					return nil, wesError
+				}
+			}
+		}
+		
+		// 如果无法解析 Problem Details，返回明确的错误信息（要求节点端正确实现 Problem Details）
+		return nil, fmt.Errorf(
+			"HTTP error response missing Problem Details: status=%d, contentType=%s, body=%s. "+
+				"Node must return Problem Details format with Content-Type: application/problem+json",
+			resp.StatusCode, contentType, string(respBody),
+		)
 	}
 
 	// 解析JSON-RPC响应
@@ -164,8 +194,43 @@ func (c *httpClient) Call(ctx context.Context, method string, params interface{}
 
 	// 检查JSON-RPC错误
 	if jsonResp.Error != nil {
-		return nil, fmt.Errorf("JSON-RPC error: code=%d, message=%s, data=%v",
-			jsonResp.Error.Code, jsonResp.Error.Message, jsonResp.Error.Data)
+		// 将 jsonRPCError 转换为 map 格式以便解析
+		rpcErrorMap := map[string]interface{}{
+			"code":    jsonResp.Error.Code,
+			"message": jsonResp.Error.Message,
+		}
+		// 处理 Data 字段（可能是对象或字符串）
+		if jsonResp.Error.Data != nil {
+			// 如果 Data 已经是 map，直接使用
+			if dataMap, ok := jsonResp.Error.Data.(map[string]interface{}); ok {
+				rpcErrorMap["data"] = dataMap
+			} else if dataStr, ok := jsonResp.Error.Data.(string); ok && dataStr != "" {
+				// 如果 Data 是字符串，尝试解析为 JSON
+				var dataMap map[string]interface{}
+				if err := json.Unmarshal([]byte(dataStr), &dataMap); err == nil {
+					rpcErrorMap["data"] = dataMap
+				} else {
+					rpcErrorMap["data"] = dataStr
+				}
+			} else {
+				rpcErrorMap["data"] = jsonResp.Error.Data
+			}
+		}
+		
+		// 优先使用统一的 Problem Details 解析函数
+		problemDetails, err := types.ParseProblemDetailsFromRPCError(rpcErrorMap)
+		if err == nil && problemDetails != nil {
+			// 成功解析 Problem Details，转换为 WesError
+			wesError := types.NewWesErrorFromProblemDetails(problemDetails)
+			return nil, wesError
+		}
+		
+		// 如果解析失败，返回明确的错误信息（要求节点端正确实现 Problem Details）
+		return nil, fmt.Errorf(
+			"JSON-RPC error response missing Problem Details: code=%d, message=%s, data=%v. "+
+				"Node must return Problem Details format in error.data field",
+			jsonResp.Error.Code, jsonResp.Error.Message, jsonResp.Error.Data,
+		)
 	}
 
 	return jsonResp.Result, nil
