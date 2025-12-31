@@ -9,11 +9,11 @@ import (
 type LockingConditionType string
 
 const (
-	LockingConditionTypeSingleKey   LockingConditionType = "singleKey"
-	LockingConditionTypeMultiKey    LockingConditionType = "multiKey"
-	LockingConditionTypeContract    LockingConditionType = "contract"
-	LockingConditionTypeDelegation  LockingConditionType = "delegation"
-	LockingConditionTypeThreshold   LockingConditionType = "threshold"
+	LockingConditionTypeSingleKey  LockingConditionType = "singleKey"
+	LockingConditionTypeMultiKey   LockingConditionType = "multiKey"
+	LockingConditionTypeContract   LockingConditionType = "contract"
+	LockingConditionTypeDelegation LockingConditionType = "delegation"
+	LockingConditionTypeThreshold  LockingConditionType = "threshold"
 	LockingConditionTypeTimeLock   LockingConditionType = "timeLock"
 	LockingConditionTypeHeightLock LockingConditionType = "heightLock"
 )
@@ -58,8 +58,8 @@ func (l *SingleKeyLockCondition) Validate() error {
 
 // MultiKeyLockCondition 多密钥锁定条件
 type MultiKeyLockCondition struct {
-	RequiredSignatures      uint32
-	AuthorizedKeys          [][]byte // 公钥列表
+	RequiredSignatures       uint32
+	AuthorizedKeys           [][]byte // 公钥列表
 	RequireOrderedSignatures bool
 }
 
@@ -77,11 +77,11 @@ func (l *MultiKeyLockCondition) ToProto() (map[string]interface{}, error) {
 	}
 	return map[string]interface{}{
 		"multi_key_lock": map[string]interface{}{
-			"required_signatures":       l.RequiredSignatures,
-			"authorized_keys":           keys,
-			"required_algorithm":        "ECDSA_SECP256K1",
+			"required_signatures":        l.RequiredSignatures,
+			"authorized_keys":            keys,
+			"required_algorithm":         "ECDSA_SECP256K1",
 			"require_ordered_signatures": l.RequireOrderedSignatures,
-			"sighash_type":             "SIGHASH_ALL",
+			"sighash_type":               "SIGHASH_ALL",
 		},
 	}, nil
 }
@@ -186,10 +186,10 @@ func (l *DelegationLockCondition) ToProto() (map[string]interface{}, error) {
 	}
 	return map[string]interface{}{
 		"delegation_lock": map[string]interface{}{
-			"original_owner":         hex.EncodeToString(l.OriginalOwner),
-			"allowed_delegates":     delegates,
-			"authorized_operations": l.AuthorizedOperations,
-			"expiry_duration_blocks": l.ExpiryDurationBlocks,
+			"original_owner":          hex.EncodeToString(l.OriginalOwner),
+			"allowed_delegates":       delegates,
+			"authorized_operations":   l.AuthorizedOperations,
+			"expiry_duration_blocks":  l.ExpiryDurationBlocks,
 			"max_value_per_operation": l.MaxValuePerOperation,
 		},
 	}, nil
@@ -225,10 +225,10 @@ func (l *ContractLockCondition) ToProto() (map[string]interface{}, error) {
 	}
 	return map[string]interface{}{
 		"contract_lock": map[string]interface{}{
-			"contract_address":     hex.EncodeToString(l.ContractAddress),
-			"required_method":      l.RequiredMethod,
-			"parameter_schema":     l.ParameterSchema,
-			"state_requirements":   l.StateRequirements,
+			"contract_address":      hex.EncodeToString(l.ContractAddress),
+			"required_method":       l.RequiredMethod,
+			"parameter_schema":      l.ParameterSchema,
+			"state_requirements":    l.StateRequirements,
 			"max_execution_time_ms": maxExecTime,
 		},
 	}, nil
@@ -268,10 +268,10 @@ func (l *ThresholdLockCondition) ToProto() (map[string]interface{}, error) {
 	return map[string]interface{}{
 		"threshold_lock": map[string]interface{}{
 			"threshold":               l.Threshold,
-			"total_parties":          l.TotalParties,
+			"total_parties":           l.TotalParties,
 			"party_verification_keys": keys,
-			"signature_scheme":       scheme,
-			"security_level":         256,
+			"signature_scheme":        scheme,
+			"security_level":          256,
 		},
 	}, nil
 }
@@ -329,7 +329,7 @@ func validateLockingConditions(conditions []LockingCondition, allowContractLockC
 				return fmt.Errorf("duplicate contract lock address: %s", addrHex)
 			}
 			contractAddresses[addrHex] = true
-			
+
 			// TODO: 实现循环检测逻辑
 			// 检查 contractAddress 是否形成循环引用
 			if !allowContractLockCycles {
@@ -337,7 +337,7 @@ func validateLockingConditions(conditions []LockingCondition, allowContractLockC
 				// 这里简化处理，实际应该调用节点 API 检查
 			}
 		}
-		
+
 		// 验证每种锁定条件的参数有效性
 		if err := condition.Validate(); err != nil {
 			return fmt.Errorf("invalid locking condition: %w", err)
@@ -345,4 +345,3 @@ func validateLockingConditions(conditions []LockingCondition, allowContractLockC
 	}
 	return nil
 }
-

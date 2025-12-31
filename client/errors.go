@@ -42,11 +42,11 @@ func IsProblemDetails(err error) (*ProblemDetails, bool) {
 
 // 错误码定义
 const (
-	ErrCodeNetwork      = 1000 // 网络错误
-	ErrCodeTimeout      = 1001 // 超时错误
+	ErrCodeNetwork         = 1000 // 网络错误
+	ErrCodeTimeout         = 1001 // 超时错误
 	ErrCodeInvalidResponse = 1002 // 无效响应
-	ErrCodeRPCError     = 1003 // JSON-RPC错误
-	ErrCodeNotSupported = 1004 // 不支持的操作
+	ErrCodeRPCError        = 1003 // JSON-RPC错误
+	ErrCodeNotSupported    = 1004 // 不支持的操作
 )
 
 // NewNetworkError 创建网络错误
@@ -89,4 +89,3 @@ func NewNotSupportedError(operation string) *Error {
 		Message: fmt.Sprintf("operation not supported: %s", operation),
 	}
 }
-

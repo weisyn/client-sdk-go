@@ -9,45 +9,45 @@ import (
 // TestChunkFile_EdgeCases 测试文件分块的边界情况
 func TestChunkFile_EdgeCases(t *testing.T) {
 	tests := []struct {
-		name      string
-		data      []byte
-		chunkSize int64
+		name       string
+		data       []byte
+		chunkSize  int64
 		wantChunks int
 	}{
 		{
-			name:      "nil data",
-			data:      nil,
-			chunkSize: 10,
+			name:       "nil data",
+			data:       nil,
+			chunkSize:  10,
 			wantChunks: 0,
 		},
 		{
-			name:      "chunk size zero (should use default)",
-			data:      make([]byte, 100),
-			chunkSize: 0,
+			name:       "chunk size zero (should use default)",
+			data:       make([]byte, 100),
+			chunkSize:  0,
 			wantChunks: 1, // 默认 1MB，100字节应该只有1块
 		},
 		{
-			name:      "chunk size negative (should use default)",
-			data:      make([]byte, 100),
-			chunkSize: -1,
+			name:       "chunk size negative (should use default)",
+			data:       make([]byte, 100),
+			chunkSize:  -1,
 			wantChunks: 1,
 		},
 		{
-			name:      "chunk size 1",
-			data:      make([]byte, 100),
-			chunkSize: 1,
+			name:       "chunk size 1",
+			data:       make([]byte, 100),
+			chunkSize:  1,
 			wantChunks: 100,
 		},
 		{
-			name:      "very large chunk size",
-			data:      make([]byte, 100),
-			chunkSize: 1000000,
+			name:       "very large chunk size",
+			data:       make([]byte, 100),
+			chunkSize:  1000000,
 			wantChunks: 1,
 		},
 		{
-			name:      "chunk size exactly half",
-			data:      make([]byte, 20),
-			chunkSize: 10,
+			name:       "chunk size exactly half",
+			data:       make([]byte, 20),
+			chunkSize:  10,
 			wantChunks: 2,
 		},
 	}
@@ -284,4 +284,3 @@ func TestEstimateProcessingTime_EdgeCases(t *testing.T) {
 		})
 	}
 }
-

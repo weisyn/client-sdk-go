@@ -96,16 +96,16 @@ const (
 // ErrorCode 错误码常量
 const (
 	// SDK 错误
-	ErrorCodeSDKHTTPError                  = "SDK_HTTP_ERROR"
-	ErrorCodeSDKGRPCError                  = "SDK_GRPC_ERROR"
-	ErrorCodeSDKRequestSerializationError  = "SDK_REQUEST_SERIALIZATION_ERROR"
+	ErrorCodeSDKHTTPError                    = "SDK_HTTP_ERROR"
+	ErrorCodeSDKGRPCError                    = "SDK_GRPC_ERROR"
+	ErrorCodeSDKRequestSerializationError    = "SDK_REQUEST_SERIALIZATION_ERROR"
 	ErrorCodeSDKResponseDeserializationError = "SDK_RESPONSE_DESERIALIZATION_ERROR"
-	ErrorCodeSDKConnectionError            = "SDK_CONNECTION_ERROR"
+	ErrorCodeSDKConnectionError              = "SDK_CONNECTION_ERROR"
 
 	// 通用错误
-	ErrorCodeCommonValidationError  = "COMMON_VALIDATION_ERROR"
-	ErrorCodeCommonInternalError    = "COMMON_INTERNAL_ERROR"
-	ErrorCodeCommonTimeout          = "COMMON_TIMEOUT"
+	ErrorCodeCommonValidationError    = "COMMON_VALIDATION_ERROR"
+	ErrorCodeCommonInternalError      = "COMMON_INTERNAL_ERROR"
+	ErrorCodeCommonTimeout            = "COMMON_TIMEOUT"
 	ErrorCodeCommonServiceUnavailable = "COMMON_SERVICE_UNAVAILABLE"
 )
 
@@ -204,4 +204,3 @@ func CreateDefaultWesError(
 		Timestamp:   time.Now().UTC().Format(time.RFC3339),
 	}
 }
-

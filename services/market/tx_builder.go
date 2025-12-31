@@ -41,7 +41,7 @@ func buildVestingDraft(
 	amount uint64,
 	tokenID []byte,
 	startTime uint64, // 开始时间（Unix时间戳）
-	duration uint64,  // 持续时间（秒）
+	duration uint64, // 持续时间（秒）
 	vestingContractAddr []byte, // Vesting 合约地址（可选）
 ) ([]byte, uint32, error) {
 	// 0. 参数验证
@@ -168,7 +168,7 @@ func buildVestingDraft(
 			"unlock_timestamp": fmt.Sprintf("%d", unlockTimestamp),
 			"time_source":      "TIME_SOURCE_BLOCK_TIMESTAMP",
 			"base_lock": map[string]interface{}{
-				"type":            "contract_lock",
+				"type":             "contract_lock",
 				"contract_address": hex.EncodeToString(vestingContractAddr),
 			},
 		}
@@ -179,7 +179,7 @@ func buildVestingDraft(
 			"unlock_timestamp": fmt.Sprintf("%d", unlockTimestamp),
 			"time_source":      "TIME_SOURCE_BLOCK_TIMESTAMP",
 			"base_lock": map[string]interface{}{
-				"type":            "single_key_lock",
+				"type":             "single_key_lock",
 				"required_address": hex.EncodeToString(toAddress),
 			},
 		}
@@ -259,7 +259,7 @@ func buildVestingTransaction(
 	amount uint64,
 	tokenID []byte,
 	startTime uint64, // 开始时间（Unix时间戳）
-	duration uint64,  // 持续时间（秒）
+	duration uint64, // 持续时间（秒）
 	vestingContractAddr []byte, // Vesting 合约地址（可选）
 ) ([]byte, error) {
 	// 1. 将地址转换为 Base58 格式
@@ -365,7 +365,7 @@ func buildVestingTransaction(
 			"unlock_timestamp": fmt.Sprintf("%d", unlockTimestamp),
 			"time_source":      "TIME_SOURCE_BLOCK_TIMESTAMP",
 			"base_lock": map[string]interface{}{
-				"type":            "contract_lock",
+				"type":             "contract_lock",
 				"contract_address": hex.EncodeToString(vestingContractAddr),
 			},
 		}
@@ -376,7 +376,7 @@ func buildVestingTransaction(
 			"unlock_timestamp": fmt.Sprintf("%d", unlockTimestamp),
 			"time_source":      "TIME_SOURCE_BLOCK_TIMESTAMP",
 			"base_lock": map[string]interface{}{
-				"type":            "single_key_lock",
+				"type":             "single_key_lock",
 				"required_address": hex.EncodeToString(toAddress),
 			},
 		}
@@ -604,14 +604,14 @@ func buildEscrowDraft(
 			"unlock_timestamp": fmt.Sprintf("%d", expiryTime),
 			"time_source":      "TIME_SOURCE_BLOCK_TIMESTAMP",
 			"base_lock": map[string]interface{}{
-				"type":            "contract_lock",
+				"type":             "contract_lock",
 				"contract_address": hex.EncodeToString(escrowContractAddr),
 			},
 		}
 	} else {
 		// MultiKeyLock（买方和卖方都需要签名）
 		lockingCondition = map[string]interface{}{
-			"type":         "multi_key_lock",
+			"type": "multi_key_lock",
 			"required_keys": []string{
 				hex.EncodeToString(buyerAddress),
 				hex.EncodeToString(sellerAddress),
@@ -796,14 +796,14 @@ func buildEscrowTransaction(
 			"unlock_timestamp": fmt.Sprintf("%d", expiryTime),
 			"time_source":      "TIME_SOURCE_BLOCK_TIMESTAMP",
 			"base_lock": map[string]interface{}{
-				"type":            "contract_lock",
+				"type":             "contract_lock",
 				"contract_address": hex.EncodeToString(escrowContractAddr),
 			},
 		}
 	} else {
 		// MultiKeyLock（买方和卖方都需要签名）
 		lockingCondition = map[string]interface{}{
-			"type":         "multi_key_lock",
+			"type": "multi_key_lock",
 			"required_keys": []string{
 				hex.EncodeToString(buyerAddress),
 				hex.EncodeToString(sellerAddress),
@@ -907,7 +907,7 @@ func buildClaimVestingDraft(
 	ctx context.Context,
 	client client.Client,
 	fromAddress []byte, // 领取者地址（受益人）
-	vestingID []byte,   // VestingID（outpoint 格式：txHash:index）
+	vestingID []byte, // VestingID（outpoint 格式：txHash:index）
 ) ([]byte, uint32, error) {
 	// 0. 参数验证
 	if len(fromAddress) == 0 {
@@ -1785,4 +1785,3 @@ func getString(m map[string]interface{}, key string) string {
 	}
 	return ""
 }
-

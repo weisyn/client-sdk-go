@@ -41,10 +41,10 @@ func (p *ProblemDetails) Error() string {
 // 注意：此函数已不再被使用，HTTP 客户端现在直接使用 types.WesProblemDetails
 func ParseProblemDetails(resp *http.Response) (*ProblemDetails, error) {
 	contentType := resp.Header.Get("Content-Type")
-	
+
 	// 检查是否是 Problem Details 格式
-	if contentType != "application/problem+json" && 
-	   contentType != "application/json" {
+	if contentType != "application/problem+json" &&
+		contentType != "application/json" {
 		return nil, fmt.Errorf("not a problem details response")
 	}
 
@@ -56,8 +56,8 @@ func ParseProblemDetails(resp *http.Response) (*ProblemDetails, error) {
 	}
 
 	// 验证必填字段
-	if problem.Code == "" || problem.Layer == "" || 
-	   problem.UserMessage == "" || problem.TraceID == "" {
+	if problem.Code == "" || problem.Layer == "" ||
+		problem.UserMessage == "" || problem.TraceID == "" {
 		return nil, fmt.Errorf("invalid problem details: missing required fields")
 	}
 
@@ -97,7 +97,7 @@ const (
 	CodeSDKHTTPError                    = "SDK_HTTP_ERROR"
 	CodeSDKGRPCError                    = "SDK_GRPC_ERROR"
 	CodeSDKRPCError                     = "SDK_GRPC_ERROR" // JSON-RPC 错误也使用 GRPC_ERROR 码
-	CodeSDKRequestSerializationError   = "SDK_REQUEST_SERIALIZATION_ERROR"
+	CodeSDKRequestSerializationError    = "SDK_REQUEST_SERIALIZATION_ERROR"
 	CodeSDKResponseDeserializationError = "SDK_RESPONSE_DESERIALIZATION_ERROR"
 	CodeSDKConnectionError              = "SDK_CONNECTION_ERROR"
 
@@ -111,4 +111,3 @@ const (
 const (
 	LayerClientSDKGo = "client-sdk-go"
 )
-

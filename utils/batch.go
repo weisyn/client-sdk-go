@@ -33,9 +33,9 @@ type BatchProgress struct {
 // DefaultBatchConfig 返回默认批量配置
 func DefaultBatchConfig() *BatchConfig {
 	return &BatchConfig{
-		BatchSize:  50,
+		BatchSize:   50,
 		Concurrency: 5,
-		OnProgress: nil,
+		OnProgress:  nil,
 	}
 }
 
@@ -237,4 +237,3 @@ func ParallelExecute[T any, R any](
 func BatchArray[T any](array []T, batchSize int) [][]T {
 	return batchArray(array, batchSize)
 }
-

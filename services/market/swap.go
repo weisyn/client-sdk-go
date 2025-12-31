@@ -61,7 +61,7 @@ func (s *marketService) swapAMM(ctx context.Context, req *SwapRequest, wallets .
 			"amountOutMin": req.AmountOutMin,
 		},
 	}
-	
+
 	payloadBase64, err := utils.BuildAndEncodePayload(payloadOptions)
 	if err != nil {
 		return nil, fmt.Errorf("build payload failed: %w", err)
@@ -69,10 +69,10 @@ func (s *marketService) swapAMM(ctx context.Context, req *SwapRequest, wallets .
 
 	// 6. 调用 wes_callContract API，设置 return_unsigned_tx=true
 	callContractParams := map[string]interface{}{
-		"content_hash":      hex.EncodeToString(ammContractHash),
-		"method":            "swap",
-		"params":            []uint64{}, // WASM 原生参数（空，使用 payload）
-		"payload":           payloadBase64,
+		"content_hash":       hex.EncodeToString(ammContractHash),
+		"method":             "swap",
+		"params":             []uint64{}, // WASM 原生参数（空，使用 payload）
+		"payload":            payloadBase64,
 		"return_unsigned_tx": true,
 	}
 
@@ -122,7 +122,7 @@ func (s *marketService) swapAMM(ctx context.Context, req *SwapRequest, wallets .
 	if err == nil && parsedTx != nil {
 		// 查找返回给用户的输出（owner 是交换者地址）
 		userOutputs := utils.FindOutputsByOwner(parsedTx.Outputs, req.From)
-		
+
 		// 汇总 tokenOut 金额
 		if len(req.TokenOut) > 0 {
 			totalAmount := utils.SumAmountsByToken(userOutputs, req.TokenOut)

@@ -31,7 +31,7 @@ func (s *resourceService) ListResources(ctx context.Context, filters *ResourceFi
 		if filters.Limit > 0 {
 			filterMap["limit"] = filters.Limit
 		}
-		if filters.Offset > 0 {
+		if filters.Offset >= 0 { // 允许 offset 为 0
 			filterMap["offset"] = filters.Offset
 		}
 	}
@@ -223,7 +223,278 @@ func (s *resourceService) parseResourceView(itemMap map[string]interface{}) (*Re
 		}
 	}
 
+	// ✅ 新增：解析锁定条件（从节点返回的 protojson 格式）
+	if lcArray, ok := itemMap["lockingConditions"].([]interface{}); ok {
+		view.LockingConditions = s.parseLockingConditions(lcArray)
+	}
+
 	return view, nil
+}
+
+// parseLockingConditions 解析锁定条件数组（从节点返回的 protojson 格式）
+func (s *resourceService) parseLockingConditions(lcArray []interface{}) []LockingCondition {
+	conditions := make([]LockingCondition, 0, len(lcArray))
+	for _, lcItem := range lcArray {
+		lcMap, ok := lcItem.(map[string]interface{})
+		if !ok {
+			continue // 跳过无效项
+		}
+
+		condition := s.parseSingleLockingCondition(lcMap)
+		if condition != nil {
+			conditions = append(conditions, condition)
+		}
+	}
+	return conditions
+}
+
+// parseSingleLockingCondition 解析单个锁定条件（从 protojson 格式）
+// 节点返回的是 protojson 格式，字段名使用 snake_case
+func (s *resourceService) parseSingleLockingCondition(lcMap map[string]interface{}) LockingCondition {
+	// single_key_lock
+	if sklMap, ok := lcMap["single_key_lock"].(map[string]interface{}); ok {
+		var addressHex string
+		if pkMap, ok := sklMap["public_key"].(map[string]interface{}); ok {
+			addressHex, _ = pkMap["value"].(string)
+		}
+		if addressHex == "" {
+			addressHex, _ = sklMap["required_address_hash"].(string)
+		}
+		if addressHex == "" {
+			return nil
+		}
+
+		addressBytes, err := hex.DecodeString(addressHex)
+		if err != nil || len(addressBytes) != 20 {
+			return nil
+		}
+
+		algorithm, _ := sklMap["required_algorithm"].(string)
+		if algorithm == "" {
+			if pkMap, ok := sklMap["public_key"].(map[string]interface{}); ok {
+				algorithm, _ = pkMap["algorithm"].(string)
+			}
+		}
+		if algorithm == "" {
+			algorithm = "ECDSA_SECP256K1"
+		}
+
+		return &SingleKeyLockCondition{
+			RequiredAddressHash: addressBytes,
+			Algorithm:           algorithm,
+		}
+	}
+
+	// multi_key_lock
+	if mklMap, ok := lcMap["multi_key_lock"].(map[string]interface{}); ok {
+		requiredSigs, _ := mklMap["required_signatures"].(float64)
+		authorizedKeysArray, _ := mklMap["authorized_keys"].([]interface{})
+
+		keys := make([][]byte, 0, len(authorizedKeysArray))
+		for _, keyItem := range authorizedKeysArray {
+			keyMap, ok := keyItem.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			keyHex, _ := keyMap["value"].(string)
+			if keyHex == "" {
+				continue
+			}
+			keyBytes, err := hex.DecodeString(keyHex)
+			if err != nil {
+				continue
+			}
+			keys = append(keys, keyBytes)
+		}
+
+		if len(keys) == 0 {
+			return nil
+		}
+
+		requireOrdered, _ := mklMap["require_ordered_signatures"].(bool)
+
+		return &MultiKeyLockCondition{
+			RequiredSignatures:       uint32(requiredSigs),
+			AuthorizedKeys:           keys,
+			RequireOrderedSignatures: requireOrdered,
+		}
+	}
+
+	// time_lock
+	if tlMap, ok := lcMap["time_lock"].(map[string]interface{}); ok {
+		unlockTs, _ := tlMap["unlock_timestamp"].(float64)
+		baseLockMap, ok := tlMap["base_lock"].(map[string]interface{})
+		if !ok {
+			return nil
+		}
+
+		baseLock := s.parseSingleLockingCondition(baseLockMap)
+		if baseLock == nil {
+			return nil
+		}
+
+		return &TimeLockCondition{
+			UnlockTimestamp: uint64(unlockTs),
+			BaseLock:        baseLock,
+		}
+	}
+
+	// height_lock
+	if hlMap, ok := lcMap["height_lock"].(map[string]interface{}); ok {
+		unlockHeight, _ := hlMap["unlock_height"].(float64)
+		confirmationBlocks, _ := hlMap["confirmation_blocks"].(float64)
+		baseLockMap, ok := hlMap["base_lock"].(map[string]interface{})
+		if !ok {
+			return nil
+		}
+
+		baseLock := s.parseSingleLockingCondition(baseLockMap)
+		if baseLock == nil {
+			return nil
+		}
+
+		confBlocks := uint32(confirmationBlocks)
+		if confBlocks == 0 {
+			confBlocks = 6 // 默认值
+		}
+
+		return &HeightLockCondition{
+			UnlockHeight:       uint64(unlockHeight),
+			BaseLock:           baseLock,
+			ConfirmationBlocks: confBlocks,
+		}
+	}
+
+	// delegation_lock
+	if dlMap, ok := lcMap["delegation_lock"].(map[string]interface{}); ok {
+		originalOwnerHex, _ := dlMap["original_owner"].(string)
+		if originalOwnerHex == "" {
+			return nil
+		}
+
+		originalOwner, err := hex.DecodeString(originalOwnerHex)
+		if err != nil || len(originalOwner) != 20 {
+			return nil
+		}
+
+		allowedDelegatesArray, _ := dlMap["allowed_delegates"].([]interface{})
+		delegates := make([][]byte, 0, len(allowedDelegatesArray))
+		for _, delegateItem := range allowedDelegatesArray {
+			delegateHex, ok := delegateItem.(string)
+			if !ok {
+				continue
+			}
+			delegateBytes, err := hex.DecodeString(delegateHex)
+			if err != nil || len(delegateBytes) != 20 {
+				continue
+			}
+			delegates = append(delegates, delegateBytes)
+		}
+
+		if len(delegates) == 0 {
+			return nil
+		}
+
+		authorizedOpsArray, _ := dlMap["authorized_operations"].([]interface{})
+		ops := make([]string, 0, len(authorizedOpsArray))
+		for _, opItem := range authorizedOpsArray {
+			if op, ok := opItem.(string); ok {
+				ops = append(ops, op)
+			}
+		}
+
+		expiryDuration, _ := dlMap["expiry_duration_blocks"].(float64)
+		maxValue, _ := dlMap["max_value_per_operation"].(float64)
+
+		return &DelegationLockCondition{
+			OriginalOwner:        originalOwner,
+			AllowedDelegates:     delegates,
+			AuthorizedOperations: ops,
+			ExpiryDurationBlocks: uint64(expiryDuration),
+			MaxValuePerOperation: uint64(maxValue),
+		}
+	}
+
+	// contract_lock
+	if clMap, ok := lcMap["contract_lock"].(map[string]interface{}); ok {
+		contractAddrHex, _ := clMap["contract_address"].(string)
+		if contractAddrHex == "" {
+			return nil
+		}
+
+		contractAddr, err := hex.DecodeString(contractAddrHex)
+		if err != nil || len(contractAddr) != 20 {
+			return nil
+		}
+
+		requiredMethod, _ := clMap["required_method"].(string)
+		if requiredMethod == "" {
+			return nil
+		}
+
+		paramSchema, _ := clMap["parameter_schema"].(string)
+		stateReqsArray, _ := clMap["state_requirements"].([]interface{})
+		stateReqs := make([]string, 0, len(stateReqsArray))
+		for _, reqItem := range stateReqsArray {
+			if req, ok := reqItem.(string); ok {
+				stateReqs = append(stateReqs, req)
+			}
+		}
+
+		maxExecTime, _ := clMap["max_execution_time_ms"].(float64)
+		if maxExecTime == 0 {
+			maxExecTime = 5000 // 默认5秒
+		}
+
+		return &ContractLockCondition{
+			ContractAddress:    contractAddr,
+			RequiredMethod:     requiredMethod,
+			ParameterSchema:    paramSchema,
+			StateRequirements:  stateReqs,
+			MaxExecutionTimeMs: uint64(maxExecTime),
+		}
+	}
+
+	// threshold_lock
+	if tlMap, ok := lcMap["threshold_lock"].(map[string]interface{}); ok {
+		threshold, _ := tlMap["threshold"].(float64)
+		totalParties, _ := tlMap["total_parties"].(float64)
+		if threshold == 0 || totalParties == 0 {
+			return nil
+		}
+
+		keysArray, _ := tlMap["party_verification_keys"].([]interface{})
+		keys := make([][]byte, 0, len(keysArray))
+		for _, keyItem := range keysArray {
+			keyHex, ok := keyItem.(string)
+			if !ok {
+				continue
+			}
+			keyBytes, err := hex.DecodeString(keyHex)
+			if err != nil {
+				continue
+			}
+			keys = append(keys, keyBytes)
+		}
+
+		if len(keys) != int(totalParties) {
+			return nil
+		}
+
+		signatureScheme, _ := tlMap["signature_scheme"].(string)
+		if signatureScheme == "" {
+			signatureScheme = "BLS_THRESHOLD"
+		}
+
+		return &ThresholdLockCondition{
+			Threshold:             uint32(threshold),
+			TotalParties:          uint32(totalParties),
+			PartyVerificationKeys: keys,
+			SignatureScheme:       signatureScheme,
+		}
+	}
+
+	return nil
 }
 
 // parseTxSummary 解析交易摘要
@@ -239,4 +510,3 @@ func (s *resourceService) parseTxSummary(txMap map[string]interface{}) *TxSummar
 	}
 	return summary
 }
-

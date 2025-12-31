@@ -216,4 +216,3 @@ func (s *permissionService) SetTimeOrHeightLock(ctx context.Context, intent SetT
 
 	return s.signAndSubmitTransaction(ctx, unsignedTx, w)
 }
-

@@ -9,7 +9,7 @@ import "github.com/weisyn/client-sdk-go/client"
 
 // HTTP 客户端（最常用）
 cfg := &client.Config{
-    Endpoint: "http://localhost:8545",
+    Endpoint: "http://localhost:28680/jsonrpc",
     Protocol: client.ProtocolHTTP,
 }
 cli, err := client.NewClient(cfg)

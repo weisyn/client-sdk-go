@@ -37,20 +37,23 @@ type ResourceView struct {
 	ExpiryTimestamp   *uint64   `json:"expiryTimestamp,omitempty"`
 	IsImmutable       bool      `json:"isImmutable"`
 
+	// ✅ 新增：锁定条件列表（从 UTXO 查询获取）
+	LockingConditions []LockingCondition `json:"lockingConditions,omitempty"`
+
 	// 使用统计
 	CurrentReferenceCount uint64 `json:"currentReferenceCount"`
 	TotalReferenceTimes   uint64 `json:"totalReferenceTimes"`
 
 	// 区块信息
-	DeployTxId       string `json:"deployTxId"`
+	DeployTxId        string `json:"deployTxId"`
 	DeployBlockHeight uint64 `json:"deployBlockHeight"`
 	DeployBlockHash   string `json:"deployBlockHash"`
 }
 
 // ResourceHistory 资源历史记录
 type ResourceHistory struct {
-	DeployTx *TxSummary          `json:"deployTx"`
-	Upgrades []*TxSummary        `json:"upgrades"`
+	DeployTx          *TxSummary        `json:"deployTx"`
+	Upgrades          []*TxSummary      `json:"upgrades"`
 	ReferencesSummary *ReferenceSummary `json:"referencesSummary"`
 }
 
@@ -68,4 +71,3 @@ type ReferenceSummary struct {
 	UniqueCallers     uint64 `json:"uniqueCallers"`
 	LastReferenceTime uint64 `json:"lastReferenceTime"`
 }
-

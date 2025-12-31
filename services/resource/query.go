@@ -46,7 +46,7 @@ func (s *resourceService) getResource(ctx context.Context, contentHash []byte) (
 	// 5. 提取资源信息
 	contentHashStr, _ := resultMap["content_hash"].(string)
 	resourceType, _ := resultMap["type"].(string)
-	
+
 	// 处理 size（可能是字符串或数字）
 	var size int64
 	if sizeStr, ok := resultMap["size"].(string); ok {
@@ -54,10 +54,10 @@ func (s *resourceService) getResource(ctx context.Context, contentHash []byte) (
 	} else if sizeNum, ok := resultMap["size"].(float64); ok {
 		size = int64(sizeNum)
 	}
-	
+
 	mimeType, _ := resultMap["mime_type"].(string)
 	ownerStr, _ := resultMap["owner"].(string)
-	
+
 	var owner []byte
 	if ownerStr != "" {
 		ownerStr = strings.TrimPrefix(ownerStr, "0x")
@@ -78,11 +78,11 @@ func (s *resourceService) getResource(ctx context.Context, contentHash []byte) (
 // getResources 获取资源列表实现
 //
 // **架构说明**：
-// GetResources 通过调用节点的 `wes_getResources` API 查询资源列表。
+// GetResources 通过调用节点的 `wes_listResources` API 查询资源列表（基于 UTXO 视图）。
 //
 // **流程**：
 // 1. 构建过滤器参数
-// 2. 调用 `wes_getResources` API
+// 2. 调用 `wes_listResources` API
 // 3. 解析返回的资源数组
 // 4. 返回 ResourceInfo 列表
 func (s *resourceService) getResources(ctx context.Context, filters *ResourceFilters) ([]*ResourceInfo, error) {
@@ -99,7 +99,7 @@ func (s *resourceService) getResources(ctx context.Context, filters *ResourceFil
 		if filters.Limit > 0 {
 			filterMap["limit"] = filters.Limit
 		}
-		if filters.Offset > 0 {
+		if filters.Offset >= 0 { // 允许 offset 为 0
 			filterMap["offset"] = filters.Offset
 		}
 	}
@@ -111,10 +111,10 @@ func (s *resourceService) getResources(ctx context.Context, filters *ResourceFil
 		},
 	}
 
-	// 3. 调用 wes_getResources API
-	result, err := s.client.Call(ctx, "wes_getResources", params)
+	// 3. 调用 wes_listResources API（已迁移，基于 UTXO 视图）
+	result, err := s.client.Call(ctx, "wes_listResources", params)
 	if err != nil {
-		return nil, fmt.Errorf("call wes_getResources failed: %w", err)
+		return nil, fmt.Errorf("call wes_listResources failed: %w", err)
 	}
 
 	// 4. 解析结果数组
@@ -133,13 +133,13 @@ func (s *resourceService) getResources(ctx context.Context, filters *ResourceFil
 
 		// 提取资源信息（复用 getResource 的解析逻辑）
 		contentHashStr, _ := itemMap["content_hash"].(string)
-		
+
 		// 优先使用 resourceType 字段（标准化字段），否则回退到 type
 		resourceType, _ := itemMap["resourceType"].(string)
 		if resourceType == "" {
 			resourceType, _ = itemMap["type"].(string)
 		}
-		
+
 		// 处理 size
 		var size int64
 		if sizeStr, ok := itemMap["size"].(string); ok {
@@ -147,9 +147,9 @@ func (s *resourceService) getResources(ctx context.Context, filters *ResourceFil
 		} else if sizeNum, ok := itemMap["size"].(float64); ok {
 			size = int64(sizeNum)
 		}
-		
+
 		mimeType, _ := itemMap["mime_type"].(string)
-		
+
 		// 处理 owner（优先使用 owner 字段，否则从 creator_address 解析）
 		var owner []byte
 		ownerStr, _ := itemMap["owner"].(string)

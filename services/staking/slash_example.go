@@ -42,7 +42,7 @@ func slashViaContract(
 			"reason":         request.Reason,
 		},
 	}
-	
+
 	payloadBase64, err := utils.BuildAndEncodePayload(payloadOptions)
 	if err != nil {
 		return nil, fmt.Errorf("build payload failed: %w", err)
@@ -50,10 +50,10 @@ func slashViaContract(
 
 	// 3. 调用 `wes_callContract` API
 	callContractParams := map[string]interface{}{
-		"content_hash":      hex.EncodeToString(slashContractAddr),
-		"method":            "slash",
-		"params":            []interface{}{},
-		"payload":           payloadBase64,
+		"content_hash":       hex.EncodeToString(slashContractAddr),
+		"method":             "slash",
+		"params":             []interface{}{},
+		"payload":            payloadBase64,
 		"return_unsigned_tx": true,
 	}
 
@@ -87,12 +87,12 @@ func slashViaContract(
 	// 从私钥获取公钥
 	privateKey := w.PrivateKey()
 	publicKeyBytes := ethcrypto.FromECDSAPub(&privateKey.PublicKey)
-	
+
 	finalizeParams := map[string]interface{}{
-		"draft":        unsignedTxHex,
-		"signatures":   []string{hex.EncodeToString(signature)},
-		"input_index":  0,
-		"public_key":   hex.EncodeToString(publicKeyBytes),
+		"draft":       unsignedTxHex,
+		"signatures":  []string{hex.EncodeToString(signature)},
+		"input_index": 0,
+		"public_key":  hex.EncodeToString(publicKeyBytes),
 	}
 
 	finalResult, err := client.Call(ctx, "wes_finalizeTransactionFromDraft", []interface{}{finalizeParams})
@@ -157,9 +157,9 @@ func slashViaGovernance(
 	// 2. 创建治理提案
 	// 注意：这里需要根据实际的 Governance Service 接口调整
 	proposeReq := map[string]interface{}{
-		"proposer":     proposerWallet.Address(),
-		"title":        proposalTitle,
-		"description":  proposalDescription,
+		"proposer":      proposerWallet.Address(),
+		"title":         proposalTitle,
+		"description":   proposalDescription,
 		"voting_period": votingPeriod,
 	}
 
@@ -209,4 +209,3 @@ func validateSlashRequest(req *SlashRequest) error {
 
 	return nil
 }
-

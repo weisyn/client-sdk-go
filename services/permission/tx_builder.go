@@ -126,13 +126,13 @@ func BuildTransferOwnershipTx(
 		},
 		"outputs": []map[string]interface{}{
 			{
-				"owner": strings.TrimPrefix(newOwnerAddressHex, "0x"),
+				"owner":       strings.TrimPrefix(newOwnerAddressHex, "0x"),
 				"output_type": "resource",
 				"resource_output": map[string]interface{}{
-					"resource":            resourceOutput["resource"],
-					"creation_timestamp":  resourceOutput["creation_timestamp"],
-					"storage_strategy":    resourceOutput["storage_strategy"],
-					"is_immutable":        resourceOutput["is_immutable"],
+					"resource":           resourceOutput["resource"],
+					"creation_timestamp": resourceOutput["creation_timestamp"],
+					"storage_strategy":   resourceOutput["storage_strategy"],
+					"is_immutable":       resourceOutput["is_immutable"],
 				},
 				"locking_conditions": newLockingConditions,
 			},
@@ -315,11 +315,11 @@ func BuildUpdateCollaboratorsTx(
 	newLockingConditions := []map[string]interface{}{
 		{
 			"multi_key_lock": map[string]interface{}{
-				"required_signatures":       intent.RequiredSignatures,
-				"authorized_keys":          allKeys,
-				"required_algorithm":       "ECDSA_SECP256K1",
+				"required_signatures":        intent.RequiredSignatures,
+				"authorized_keys":            allKeys,
+				"required_algorithm":         "ECDSA_SECP256K1",
 				"require_ordered_signatures": false,
-				"sighash_type":             "SIGHASH_ALL",
+				"sighash_type":               "SIGHASH_ALL",
 			},
 		},
 	}
@@ -343,19 +343,19 @@ func BuildUpdateCollaboratorsTx(
 		},
 		"outputs": []map[string]interface{}{
 			{
-				"owner": owner,
+				"owner":       owner,
 				"output_type": "resource",
 				"resource_output": map[string]interface{}{
-					"resource":            resourceOutput["resource"],
-					"creation_timestamp":  resourceOutput["creation_timestamp"],
-					"storage_strategy":    resourceOutput["storage_strategy"],
-					"is_immutable":        resourceOutput["is_immutable"],
+					"resource":           resourceOutput["resource"],
+					"creation_timestamp": resourceOutput["creation_timestamp"],
+					"storage_strategy":   resourceOutput["storage_strategy"],
+					"is_immutable":       resourceOutput["is_immutable"],
 				},
 				"locking_conditions": newLockingConditions,
 			},
 		},
 		"metadata": map[string]interface{}{
-			"operation":          "update_collaborators",
+			"operation":           "update_collaborators",
 			"required_signatures": intent.RequiredSignatures,
 			"collaborators_count": len(allKeys),
 		},
@@ -509,7 +509,7 @@ func BuildGrantDelegationTx(
 	// 6. 构建 DelegationLock
 	delegationLock := map[string]interface{}{
 		"delegation_lock": map[string]interface{}{
-			"original_owner":         strings.TrimPrefix(originalOwnerHex, "0x"),
+			"original_owner":          strings.TrimPrefix(originalOwnerHex, "0x"),
 			"allowed_delegates":       []string{strings.TrimPrefix(delegateAddressHex, "0x")},
 			"authorized_operations":   intent.Operations,
 			"max_value_per_operation": "0",
@@ -539,22 +539,22 @@ func BuildGrantDelegationTx(
 		},
 		"outputs": []map[string]interface{}{
 			{
-				"owner": strings.TrimPrefix(originalOwnerHex, "0x"),
+				"owner":       strings.TrimPrefix(originalOwnerHex, "0x"),
 				"output_type": "resource",
 				"resource_output": map[string]interface{}{
-					"resource":            resourceOutput["resource"],
-					"creation_timestamp":  resourceOutput["creation_timestamp"],
-					"storage_strategy":    resourceOutput["storage_strategy"],
-					"is_immutable":        resourceOutput["is_immutable"],
+					"resource":           resourceOutput["resource"],
+					"creation_timestamp": resourceOutput["creation_timestamp"],
+					"storage_strategy":   resourceOutput["storage_strategy"],
+					"is_immutable":       resourceOutput["is_immutable"],
 				},
 				"locking_conditions": newLockingConditions,
 			},
 		},
 		"metadata": map[string]interface{}{
-			"operation":           "grant_delegation",
-			"delegate_address":    delegateAddressHex,
+			"operation":             "grant_delegation",
+			"delegate_address":      delegateAddressHex,
 			"authorized_operations": strings.Join(intent.Operations, ","),
-			"expiry_blocks":       intent.ExpiryBlocks,
+			"expiry_blocks":         intent.ExpiryBlocks,
 		},
 	}
 
@@ -734,13 +734,13 @@ func BuildSetLockTx(
 		},
 		"outputs": []map[string]interface{}{
 			{
-				"owner": strings.TrimPrefix(owner, "0x"),
+				"owner":       strings.TrimPrefix(owner, "0x"),
 				"output_type": "resource",
 				"resource_output": map[string]interface{}{
-					"resource":            resourceOutput["resource"],
-					"creation_timestamp":  resourceOutput["creation_timestamp"],
-					"storage_strategy":    resourceOutput["storage_strategy"],
-					"is_immutable":        resourceOutput["is_immutable"],
+					"resource":           resourceOutput["resource"],
+					"creation_timestamp": resourceOutput["creation_timestamp"],
+					"storage_strategy":   resourceOutput["storage_strategy"],
+					"is_immutable":       resourceOutput["is_immutable"],
 				},
 				"locking_conditions": []interface{}{newLockingCondition},
 			},
@@ -762,4 +762,3 @@ func BuildSetLockTx(
 		InputIndex: 0,
 	}, nil
 }
-

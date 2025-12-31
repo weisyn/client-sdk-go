@@ -205,14 +205,14 @@ func (c *websocketClient) Call(ctx context.Context, method string, params interf
 					rpcErrorMap["data"] = resp.Error.Data
 				}
 			}
-			
+
 			problemDetails, err := types.ParseProblemDetailsFromRPCError(rpcErrorMap)
 			if err == nil && problemDetails != nil {
 				// 成功解析 Problem Details，转换为 WesError
 				wesError := types.NewWesErrorFromProblemDetails(problemDetails)
 				return nil, wesError
 			}
-			
+
 			// 如果解析失败，返回明确的错误信息（要求节点端正确实现 Problem Details）
 			return nil, fmt.Errorf(
 				"JSON-RPC error response missing Problem Details: code=%d, message=%s, data=%v. "+
@@ -329,4 +329,3 @@ func (c *websocketClient) Close() error {
 	}
 	return nil
 }
-

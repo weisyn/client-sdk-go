@@ -63,7 +63,7 @@ import (
 func main() {
     // 1. 初始化客户端
     cfg := &client.Config{
-        Endpoint: "http://localhost:8545",
+        Endpoint: "http://localhost:28680/jsonrpc",
         Protocol: client.ProtocolHTTP,
     }
     cli, err := client.NewClient(cfg)
@@ -108,20 +108,20 @@ SDK 支持三种传输协议：
 ```go
 // HTTP 客户端（最常用）
 client := client.NewClient(&client.Config{
-    Endpoint: "http://localhost:8545",
+    Endpoint: "http://localhost:28680/jsonrpc",
     Protocol: client.ProtocolHTTP,
     Timeout:  30,
 })
 
 // gRPC 客户端（高性能）
 client := client.NewClient(&client.Config{
-    Endpoint: "localhost:9090",
+    Endpoint: "localhost:28682",
     Protocol: client.ProtocolGRPC,
 })
 
 // WebSocket 客户端（用于事件订阅）
 client := client.NewClient(&client.Config{
-    Endpoint: "ws://localhost:8081",
+    Endpoint: "ws://localhost:28681",
     Protocol: client.ProtocolWebSocket,
 })
 ```
@@ -135,7 +135,7 @@ import "github.com/weisyn/client-sdk-go/client"
 
 // 创建 WESClient
 cfg := &client.Config{
-    Endpoint: "http://localhost:8545",
+    Endpoint: "http://localhost:28680/jsonrpc",
     Protocol: client.ProtocolHTTP,
 }
 wesClient, err := client.NewWESClient(cfg)
@@ -232,18 +232,18 @@ sequenceDiagram
 ```go
 // 单客户端模式
 client := client.NewClient(&client.Config{
-    Endpoint: "http://localhost:8545",
+    Endpoint: "http://localhost:28680/jsonrpc",
     Protocol: client.ProtocolHTTP,
 })
 
 // 多客户端模式（HTTP + WebSocket）
 httpClient := client.NewClient(&client.Config{
-    Endpoint: "http://localhost:8545",
+    Endpoint: "http://localhost:28680/jsonrpc",
     Protocol: client.ProtocolHTTP,
 })
 
 wsClient := client.NewClient(&client.Config{
-    Endpoint: "ws://localhost:8081",
+    Endpoint: "ws://localhost:28681",
     Protocol: client.ProtocolWebSocket,
 })
 ```
@@ -326,12 +326,12 @@ if err != nil {
 ```go
 // 使用 WebSocket 客户端订阅事件
 wsClient, _ := client.NewClient(&client.Config{
-    Endpoint: "ws://localhost:8081",
+    Endpoint: "ws://localhost:28681",
     Protocol: client.ProtocolWebSocket,
 })
 
 wesClient, _ := client.NewWESClient(&client.Config{
-    Endpoint: "ws://localhost:8081",
+    Endpoint: "ws://localhost:28681",
     Protocol: client.ProtocolWebSocket,
 })
 
@@ -498,7 +498,7 @@ result, err := resourceService.DeployContract(ctx, &resource.DeployContractReque
 ```go
 // 创建 WebSocket 客户端
 wsClient, _ := client.NewWESClient(&client.Config{
-    Endpoint: "ws://localhost:8081",
+    Endpoint: "ws://localhost:28681",
     Protocol: client.ProtocolWebSocket,
 })
 
@@ -570,7 +570,7 @@ const (
 ```go
 // HTTP 客户端自动管理连接池
 client := client.NewClient(&client.Config{
-    Endpoint: "http://localhost:8545",
+    Endpoint: "http://localhost:28680/jsonrpc",
     Protocol: client.ProtocolHTTP,
     Timeout:  30,
 })

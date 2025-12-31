@@ -140,40 +140,40 @@ func TestParallelExecute_EdgeCases(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name       string
-		items      []int
+		name        string
+		items       []int
 		concurrency int
-		wantErr    bool
+		wantErr     bool
 	}{
 		{
-			name:       "nil items",
-			items:      nil,
+			name:        "nil items",
+			items:       nil,
 			concurrency: 5,
-			wantErr:    false,
+			wantErr:     false,
 		},
 		{
-			name:       "concurrency zero",
-			items:      []int{1, 2, 3},
+			name:        "concurrency zero",
+			items:       []int{1, 2, 3},
 			concurrency: 0,
-			wantErr:    true, // 应该失败或使用默认值
+			wantErr:     true, // 应该失败或使用默认值
 		},
 		{
-			name:       "concurrency negative",
-			items:      []int{1, 2, 3},
+			name:        "concurrency negative",
+			items:       []int{1, 2, 3},
 			concurrency: -1,
-			wantErr:    true,
+			wantErr:     true,
 		},
 		{
-			name:       "concurrency larger than items",
-			items:      []int{1, 2, 3},
+			name:        "concurrency larger than items",
+			items:       []int{1, 2, 3},
 			concurrency: 100,
-			wantErr:    false,
+			wantErr:     false,
 		},
 		{
-			name:       "very large items array",
-			items:      make([]int, 1000),
+			name:        "very large items array",
+			items:       make([]int, 1000),
 			concurrency: 10,
-			wantErr:    false,
+			wantErr:     false,
 		},
 	}
 
@@ -200,45 +200,45 @@ func TestParallelExecute_EdgeCases(t *testing.T) {
 // TestBatchArray_EdgeCases 测试数组分批的边界情况
 func TestBatchArray_EdgeCases(t *testing.T) {
 	tests := []struct {
-		name      string
-		array     []int
-		batchSize int
+		name        string
+		array       []int
+		batchSize   int
 		wantBatches int
 	}{
 		{
-			name:       "nil array",
-			array:      nil,
-			batchSize:  5,
+			name:        "nil array",
+			array:       nil,
+			batchSize:   5,
 			wantBatches: 0,
 		},
 		{
-			name:       "batch size zero",
-			array:      []int{1, 2, 3},
-			batchSize:  0,
+			name:        "batch size zero",
+			array:       []int{1, 2, 3},
+			batchSize:   0,
 			wantBatches: 0, // 应该返回空数组或处理错误
 		},
 		{
-			name:       "batch size negative",
-			array:      []int{1, 2, 3},
-			batchSize:  -1,
+			name:        "batch size negative",
+			array:       []int{1, 2, 3},
+			batchSize:   -1,
 			wantBatches: 0,
 		},
 		{
-			name:       "batch size larger than array",
-			array:      []int{1, 2, 3},
-			batchSize:  100,
+			name:        "batch size larger than array",
+			array:       []int{1, 2, 3},
+			batchSize:   100,
 			wantBatches: 1,
 		},
 		{
-			name:       "very large array",
-			array:      make([]int, 10000),
-			batchSize:  50,
+			name:        "very large array",
+			array:       make([]int, 10000),
+			batchSize:   50,
 			wantBatches: 200,
 		},
 		{
-			name:       "single element batches",
-			array:      []int{1, 2, 3, 4, 5},
-			batchSize:  1,
+			name:        "single element batches",
+			array:       []int{1, 2, 3, 4, 5},
+			batchSize:   1,
 			wantBatches: 5,
 		},
 	}
@@ -268,4 +268,3 @@ func TestBatchArray_EdgeCases(t *testing.T) {
 		})
 	}
 }
-

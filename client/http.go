@@ -93,7 +93,7 @@ func (c *httpClient) Call(ctx context.Context, method string, params interface{}
 	// 发送请求（带重试）
 	var resp *http.Response
 	var respErr error
-	
+
 	if c.retry != nil {
 		// 使用重试机制
 		respErr = withRetry(ctx, func() error {
@@ -169,15 +169,15 @@ func (c *httpClient) Call(ctx context.Context, method string, params interface{}
 			var problemDetails types.WesProblemDetails
 			if err := json.Unmarshal(respBody, &problemDetails); err == nil {
 				// 验证必填字段
-				if problemDetails.Code != "" && problemDetails.Layer != "" && 
-				   problemDetails.UserMessage != "" && problemDetails.TraceID != "" {
+				if problemDetails.Code != "" && problemDetails.Layer != "" &&
+					problemDetails.UserMessage != "" && problemDetails.TraceID != "" {
 					// 转换为 WesError
 					wesError := types.NewWesErrorFromProblemDetails(&problemDetails)
 					return nil, wesError
 				}
 			}
 		}
-		
+
 		// 如果无法解析 Problem Details，返回明确的错误信息（要求节点端正确实现 Problem Details）
 		return nil, fmt.Errorf(
 			"HTTP error response missing Problem Details: status=%d, contentType=%s, body=%s. "+
@@ -216,7 +216,7 @@ func (c *httpClient) Call(ctx context.Context, method string, params interface{}
 				rpcErrorMap["data"] = jsonResp.Error.Data
 			}
 		}
-		
+
 		// 优先使用统一的 Problem Details 解析函数
 		problemDetails, err := types.ParseProblemDetailsFromRPCError(rpcErrorMap)
 		if err == nil && problemDetails != nil {
@@ -224,7 +224,7 @@ func (c *httpClient) Call(ctx context.Context, method string, params interface{}
 			wesError := types.NewWesErrorFromProblemDetails(problemDetails)
 			return nil, wesError
 		}
-		
+
 		// 如果解析失败，返回明确的错误信息（要求节点端正确实现 Problem Details）
 		return nil, fmt.Errorf(
 			"JSON-RPC error response missing Problem Details: code=%d, message=%s, data=%v. "+
@@ -296,10 +296,10 @@ type jsonRPCRequest struct {
 
 // jsonRPCResponse JSON-RPC响应结构
 type jsonRPCResponse struct {
-	JSONRPC string          `json:"jsonrpc"`
-	Result  interface{}     `json:"result,omitempty"`
-	Error   *jsonRPCError   `json:"error,omitempty"`
-	ID      uint64          `json:"id"`
+	JSONRPC string        `json:"jsonrpc"`
+	Result  interface{}   `json:"result,omitempty"`
+	Error   *jsonRPCError `json:"error,omitempty"`
+	ID      uint64        `json:"id"`
 }
 
 // jsonRPCError JSON-RPC错误结构
@@ -308,4 +308,3 @@ type jsonRPCError struct {
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
 }
-

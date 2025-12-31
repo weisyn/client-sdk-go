@@ -35,4 +35,3 @@ type GovernanceConfig struct {
 	// ThresholdLock 的门限值（需要多少个验证者签名）
 	Threshold uint32
 }
-

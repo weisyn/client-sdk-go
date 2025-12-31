@@ -69,4 +69,3 @@ func wrapRPCError(method string, err error) error {
 	// 其他错误保持原状
 	return err
 }
-

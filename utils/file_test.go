@@ -9,33 +9,33 @@ import (
 // TestChunkFile 测试文件分块功能（ChunkFile 在 file.go 中定义）
 func TestChunkFile_File(t *testing.T) {
 	tests := []struct {
-		name      string
-		data      []byte
-		chunkSize int64
+		name       string
+		data       []byte
+		chunkSize  int64
 		wantChunks int
 	}{
 		{
-			name:      "empty data",
-			data:      []byte{},
-			chunkSize: 10,
+			name:       "empty data",
+			data:       []byte{},
+			chunkSize:  10,
 			wantChunks: 0,
 		},
 		{
-			name:      "small data, single chunk",
-			data:      []byte{1, 2, 3, 4, 5},
-			chunkSize: 10,
+			name:       "small data, single chunk",
+			data:       []byte{1, 2, 3, 4, 5},
+			chunkSize:  10,
 			wantChunks: 1,
 		},
 		{
-			name:      "exact chunk size",
-			data:      make([]byte, 10),
-			chunkSize: 10,
+			name:       "exact chunk size",
+			data:       make([]byte, 10),
+			chunkSize:  10,
 			wantChunks: 1,
 		},
 		{
-			name:      "multiple chunks",
-			data:      make([]byte, 25),
-			chunkSize: 10,
+			name:       "multiple chunks",
+			data:       make([]byte, 25),
+			chunkSize:  10,
 			wantChunks: 3,
 		},
 	}
@@ -79,7 +79,7 @@ func TestProcessFileInChunks(t *testing.T) {
 		{
 			name: "custom config",
 			config: &ChunkConfig{
-				ChunkSize: 20,
+				ChunkSize:   20,
 				Concurrency: 2,
 			},
 			wantErr: false,
@@ -87,7 +87,7 @@ func TestProcessFileInChunks(t *testing.T) {
 		{
 			name: "with progress callback",
 			config: &ChunkConfig{
-				ChunkSize: 20,
+				ChunkSize:   20,
 				Concurrency: 2,
 				OnProgress: func(progress FileProgress) {
 					// 验证进度信息
@@ -259,4 +259,3 @@ func TestDefaultChunkConfig(t *testing.T) {
 		t.Errorf("DefaultChunkConfig() Concurrency = %d, want 3", config.Concurrency)
 	}
 }
-

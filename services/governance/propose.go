@@ -49,7 +49,7 @@ func (s *governanceService) propose(ctx context.Context, req *ProposeRequest, wa
 	// TODO: 需要从配置或参数获取验证者地址列表
 	// 当前简化：使用提案者地址作为验证者（实际应该查询验证者列表）
 	validatorAddresses := [][]byte{req.Proposer} // 临时：使用提案者地址
-	threshold := uint32(1)                        // 临时：需要1个签名
+	threshold := uint32(1)                       // 临时：需要1个签名
 
 	draftJSON, inputIndex, err := buildProposeDraft(
 		ctx,
@@ -187,4 +187,3 @@ func (s *governanceService) validateProposeRequest(req *ProposeRequest) error {
 
 	return nil
 }
-

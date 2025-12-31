@@ -56,4 +56,3 @@ func (s *tokenService) getBalance(ctx context.Context, address []byte, tokenID [
 
 	return balance, nil
 }
-

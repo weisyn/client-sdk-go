@@ -143,10 +143,10 @@ func TestBuildPayload_FieldConflict(t *testing.T) {
 // TestBuildAndEncodePayload_Base64Encoding 测试 Base64 编码
 func TestBuildAndEncodePayload_Base64Encoding(t *testing.T) {
 	options := utils.BuildPayloadOptions{
-		IncludeFrom: true,
-		From:        make([]byte, 20),
+		IncludeFrom:   true,
+		From:          make([]byte, 20),
 		IncludeAmount: true,
-		Amount:     1000000,
+		Amount:        1000000,
 	}
 
 	encoded, err := utils.BuildAndEncodePayload(options)
@@ -262,4 +262,3 @@ func hexCharToByte(c byte) byte {
 	}
 	return 0
 }
-

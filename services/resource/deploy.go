@@ -15,11 +15,12 @@ import (
 //
 // ⚠️ **当前实现说明**：
 // 当前节点提供了 `wes_deployContract` API，但可能没有专门的静态资源部署方法。
-// 
+//
 // **理想流程**（待实现）：
 // 1. 调用节点API部署静态资源（创建 ResourceOutput）
-//    - 可以使用 `wes_deployContract` API（如果支持静态资源）
-//    - 或需要节点提供 `wes_deployStaticResource` JSON-RPC 方法
+//   - 可以使用 `wes_deployContract` API（如果支持静态资源）
+//   - 或需要节点提供 `wes_deployStaticResource` JSON-RPC 方法
+//
 // 2. 使用钱包签名交易
 // 3. 调用 `wes_sendRawTransaction` 提交已签名交易
 //
@@ -139,10 +140,11 @@ func (s *resourceService) validateDeployStaticResourceRequest(req *DeployStaticR
 //
 // ⚠️ **当前实现说明**：
 // 当前节点提供了 `wes_deployContract` JSON-RPC 方法，但需要确认参数格式。
-// 
+//
 // **理想流程**（待实现）：
 // 1. 调用节点 `wes_deployContract` API 构建部署合约交易（创建 ResourceOutput）
-//    - 参考 `internal/api/jsonrpc/methods/tx.go` 中的 `DeployContract` 实现
+//   - 参考 `internal/api/jsonrpc/methods/tx.go` 中的 `DeployContract` 实现
+//
 // 2. 使用钱包签名交易
 // 3. 调用 `wes_sendRawTransaction` 提交已签名交易
 //
@@ -223,10 +225,10 @@ func (s *resourceService) deployContract(ctx context.Context, req *DeployContrac
 	// 注意：当前 API 需要 private_key，如果未来支持 return_unsigned_tx，可以改为使用 Wallet 签名
 	deployParams := map[string]interface{}{
 		"private_key":        privateKeyHex,
-		"wasm_content":      wasmContentBase64,
-		"abi_version":       "v1", // 默认 ABI 版本
-		"name":              req.ContractName,
-		"description":       "", // 可选
+		"wasm_content":       wasmContentBase64,
+		"abi_version":        "v1", // 默认 ABI 版本
+		"name":               req.ContractName,
+		"description":        "",                     // 可选
 		"locking_conditions": lockingConditionsProto, // ✅ 新增字段
 	}
 
@@ -297,11 +299,12 @@ func (s *resourceService) validateDeployContractRequest(req *DeployContractReque
 //
 // ⚠️ **当前实现说明**：
 // 当前节点可能没有提供专门的 AI 模型部署 JSON-RPC 方法（如 `wes_deployAIModel`）。
-// 
+//
 // **理想流程**（待实现）：
 // 1. 调用节点API部署AI模型（创建 ResourceOutput，类型为 ONNX）
-//    - 可以使用 `wes_deployContract` API（如果支持 ONNX 模型）
-//    - 或需要节点提供 `wes_deployAIModel` JSON-RPC 方法
+//   - 可以使用 `wes_deployContract` API（如果支持 ONNX 模型）
+//   - 或需要节点提供 `wes_deployAIModel` JSON-RPC 方法
+//
 // 2. 使用钱包签名交易
 // 3. 调用 `wes_sendRawTransaction` 提交已签名交易
 //
@@ -413,4 +416,3 @@ func (s *resourceService) validateDeployAIModelRequest(req *DeployAIModelRequest
 
 	return nil
 }
-

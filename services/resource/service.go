@@ -83,13 +83,13 @@ type DeployContractRequest struct {
 	WasmPath     string // WASM文件路径
 	ContractName string // 合约名称
 	InitArgs     []byte // 初始化参数
-	
+
 	// ✅ 新增：锁定条件列表
 	LockingConditions []LockingCondition
-	
+
 	// ✅ 新增：锁定条件验证选项
-	ValidateLockingConditions bool  // 是否在SDK层验证（默认true）
-	AllowContractLockCycles    bool  // 是否允许ContractLock循环（默认false）
+	ValidateLockingConditions bool // 是否在SDK层验证（默认true）
+	AllowContractLockCycles   bool // 是否允许ContractLock循环（默认false）
 }
 
 // DeployContractResult 部署合约结果
@@ -116,10 +116,10 @@ type DeployAIModelResult struct {
 
 // ResourceFilters 资源查询过滤器
 type ResourceFilters struct {
-	ResourceType string   // 资源类型过滤："contract" | "model" | "static"
-	Owner        []byte   // 创建者地址过滤（hex 字节）
-	Limit        int      // 返回数量限制（默认50，最大200）
-	Offset       int      // 偏移量（默认0）
+	ResourceType string // 资源类型过滤："contract" | "model" | "static"
+	Owner        []byte // 创建者地址过滤（hex 字节）
+	Limit        int    // 返回数量限制（默认50，最大200）
+	Offset       int    // 偏移量（默认0）
 }
 
 // ResourceInfo 资源信息

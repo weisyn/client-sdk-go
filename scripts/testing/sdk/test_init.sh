@@ -33,14 +33,14 @@ SDK_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 WES_ROOT="$(cd "${SDK_ROOT}/../weisyn.git" && pwd)"
 
 # 节点配置
-NODE_ENDPOINT="http://localhost:8080/jsonrpc"
+NODE_ENDPOINT="http://localhost:28680/jsonrpc"
 NODE_STARTUP_TIMEOUT=60
 NODE_CHECK_INTERVAL=2
 
 # 检查节点是否运行
 check_node_running() {
     if curl -sf "${NODE_ENDPOINT}" >/dev/null 2>&1 || \
-       curl -sf "http://localhost:8080/health" >/dev/null 2>&1; then
+       curl -sf "http://localhost:28680/health" >/dev/null 2>&1; then
         return 0
     fi
     return 1

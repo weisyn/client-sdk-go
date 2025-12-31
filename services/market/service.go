@@ -65,12 +65,12 @@ func (s *marketService) getWallet(wallets ...wallet.Wallet) wallet.Wallet {
 
 // SwapRequest AMM交换请求
 type SwapRequest struct {
-	From           []byte // 交换者地址（20字节）
+	From            []byte // 交换者地址（20字节）
 	AMMContractAddr []byte // AMM 合约地址（contentHash，32字节）
-	TokenIn        []byte // 输入代币ID（nil表示原生币）
-	TokenOut       []byte // 输出代币ID（nil表示原生币）
-	AmountIn       uint64 // 输入金额
-	AmountOutMin   uint64 // 最小输出金额（滑点保护）
+	TokenIn         []byte // 输入代币ID（nil表示原生币）
+	TokenOut        []byte // 输出代币ID（nil表示原生币）
+	AmountIn        uint64 // 输入金额
+	AmountOutMin    uint64 // 最小输出金额（滑点保护）
 }
 
 // SwapResult AMM交换结果
@@ -82,11 +82,11 @@ type SwapResult struct {
 
 // AddLiquidityRequest 添加流动性请求
 type AddLiquidityRequest struct {
-	From           []byte // 流动性提供者地址（20字节）
+	From            []byte // 流动性提供者地址（20字节）
 	AMMContractAddr []byte // AMM 合约地址（contentHash，32字节）
-	TokenA         []byte // 代币A ID
-	TokenB         []byte // 代币B ID
-	AmountA        uint64 // 代币A金额
+	TokenA          []byte // 代币A ID
+	TokenB          []byte // 代币B ID
+	AmountA         uint64 // 代币A金额
 	AmountB         uint64 // 代币B金额
 }
 
@@ -99,35 +99,35 @@ type AddLiquidityResult struct {
 
 // RemoveLiquidityRequest 移除流动性请求
 type RemoveLiquidityRequest struct {
-	From           []byte // 流动性提供者地址（20字节）
+	From            []byte // 流动性提供者地址（20字节）
 	AMMContractAddr []byte // AMM 合约地址（contentHash，32字节）
-	LiquidityID    []byte // 流动性ID
-	Amount         uint64 // 移除金额
+	LiquidityID     []byte // 流动性ID
+	Amount          uint64 // 移除金额
 }
 
 // RemoveLiquidityResult 移除流动性结果
 type RemoveLiquidityResult struct {
-	TxHash    string // 交易哈希
-	AmountA   uint64 // 获得的代币A金额
-	AmountB   uint64 // 获得的代币B金额
-	Success   bool   // 是否成功
+	TxHash  string // 交易哈希
+	AmountA uint64 // 获得的代币A金额
+	AmountB uint64 // 获得的代币B金额
+	Success bool   // 是否成功
 }
 
 // CreateVestingRequest 创建归属计划请求
 type CreateVestingRequest struct {
-	From     []byte // 创建者地址（20字节）
-	To       []byte // 受益人地址（20字节）
-	TokenID  []byte // 代币ID
-	Amount   uint64 // 总金额
+	From      []byte // 创建者地址（20字节）
+	To        []byte // 受益人地址（20字节）
+	TokenID   []byte // 代币ID
+	Amount    uint64 // 总金额
 	StartTime uint64 // 开始时间（Unix时间戳）
-	Duration uint64 // 持续时间（秒）
+	Duration  uint64 // 持续时间（秒）
 }
 
 // CreateVestingResult 创建归属计划结果
 type CreateVestingResult struct {
-	TxHash     string // 交易哈希
-	VestingID  []byte // 归属计划ID
-	Success    bool   // 是否成功
+	TxHash    string // 交易哈希
+	VestingID []byte // 归属计划ID
+	Success   bool   // 是否成功
 }
 
 // ClaimVestingRequest 领取归属代币请求
@@ -154,16 +154,16 @@ type CreateEscrowRequest struct {
 
 // CreateEscrowResult 创建托管结果
 type CreateEscrowResult struct {
-	TxHash    string // 交易哈希
-	EscrowID  []byte // 托管ID
-	Success   bool   // 是否成功
+	TxHash   string // 交易哈希
+	EscrowID []byte // 托管ID
+	Success  bool   // 是否成功
 }
 
 // ReleaseEscrowRequest 释放托管请求
 type ReleaseEscrowRequest struct {
-	From         []byte // 释放者地址（通常是买方，20字节）
+	From          []byte // 释放者地址（通常是买方，20字节）
 	SellerAddress []byte // 卖方地址（20字节）
-	EscrowID     []byte // 托管ID
+	EscrowID      []byte // 托管ID
 }
 
 // ReleaseEscrowResult 释放托管结果
@@ -224,4 +224,3 @@ func (s *marketService) ReleaseEscrow(ctx context.Context, req *ReleaseEscrowReq
 func (s *marketService) RefundEscrow(ctx context.Context, req *RefundEscrowRequest, wallets ...wallet.Wallet) (*RefundEscrowResult, error) {
 	return s.refundEscrow(ctx, req, wallets...)
 }
-

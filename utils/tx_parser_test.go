@@ -9,40 +9,40 @@ import (
 
 func TestParseOwnerAddress(t *testing.T) {
 	tests := []struct {
-		name    string
+		name     string
 		ownerStr string
-		wantLen int
-		wantErr bool
+		wantLen  int
+		wantErr  bool
 	}{
 		{
-			name:    "Base64 encoded address",
+			name:     "Base64 encoded address",
 			ownerStr: base64.StdEncoding.EncodeToString(make([]byte, 20)),
-			wantLen: 20,
-			wantErr: false,
+			wantLen:  20,
+			wantErr:  false,
 		},
 		{
-			name:    "hex address with 0x prefix",
+			name:     "hex address with 0x prefix",
 			ownerStr: "0x" + hex.EncodeToString(make([]byte, 20)),
-			wantLen: 20,
-			wantErr: false,
+			wantLen:  20,
+			wantErr:  false,
 		},
 		{
-			name:    "hex address without 0x prefix",
+			name:     "hex address without 0x prefix",
 			ownerStr: hex.EncodeToString(make([]byte, 20)),
-			wantLen: 20,
-			wantErr: false,
+			wantLen:  20,
+			wantErr:  false,
 		},
 		{
-			name:    "empty string",
+			name:     "empty string",
 			ownerStr: "",
-			wantLen: 0,
-			wantErr: false,
+			wantLen:  0,
+			wantErr:  false,
 		},
 		{
-			name:    "invalid hex",
+			name:     "invalid hex",
 			ownerStr: "0xGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
-			wantLen: 0,
-			wantErr: true,
+			wantLen:  0,
+			wantErr:  true,
 		},
 	}
 
@@ -82,10 +82,10 @@ func TestParseTransactionData(t *testing.T) {
 		},
 		"outputs": []interface{}{
 			map[string]interface{}{
-				"index":  float64(0),
-				"type":   "asset",
-				"owner":  base64.StdEncoding.EncodeToString(make([]byte, 20)),
-				"amount": "1000000",
+				"index":    float64(0),
+				"type":     "asset",
+				"owner":    base64.StdEncoding.EncodeToString(make([]byte, 20)),
+				"amount":   "1000000",
 				"token_id": "",
 			},
 		},
@@ -98,7 +98,7 @@ func TestParseTransactionData(t *testing.T) {
 	if mockTx["outputs"] == nil {
 		t.Error("mockTx should have outputs field")
 	}
-	
+
 	// 验证 outputs 结构
 	outputs, ok := mockTx["outputs"].([]interface{})
 	if !ok {
@@ -233,10 +233,10 @@ func TestSumAmountsByToken(t *testing.T) {
 
 func TestGetOutpoint(t *testing.T) {
 	tests := []struct {
-		name    string
-		txHash  string
-		index   uint32
-		want    string
+		name   string
+		txHash string
+		index  uint32
+		want   string
 	}{
 		{
 			name:   "with 0x prefix",
@@ -267,4 +267,3 @@ func bigIntFromString(s string) *big.Int {
 	result, _ := new(big.Int).SetString(s, 10)
 	return result
 }
-

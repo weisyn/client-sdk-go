@@ -184,7 +184,7 @@ func buildStakeDraft(
 			"type":          "height_lock",
 			"unlock_height": unlockHeightStr,
 			"base_lock": map[string]interface{}{
-				"type":            "contract_lock",
+				"type":             "contract_lock",
 				"contract_address": hex.EncodeToString(stakingContractAddr),
 			},
 		}
@@ -194,7 +194,7 @@ func buildStakeDraft(
 			"type":          "height_lock",
 			"unlock_height": unlockHeightStr,
 			"base_lock": map[string]interface{}{
-				"type":            "single_key_lock",
+				"type":             "single_key_lock",
 				"required_address": hex.EncodeToString(validatorAddr),
 			},
 		}
@@ -362,12 +362,12 @@ func buildStakeTransaction(
 	if heightResult, err := client.Call(ctx, "wes_blockNumber", []interface{}{}); err == nil {
 		// wes_blockNumber 返回十六进制字符串（如 "0x288"）
 		if heightStr, ok := heightResult.(string); ok {
-				// 尝试解析十六进制或十进制
-				heightStr = strings.TrimPrefix(heightStr, "0x")
-				if height, ok := new(big.Int).SetString(heightStr, 16); ok {
-					currentHeight = height.Uint64()
-				} else if height, ok := new(big.Int).SetString(heightStr, 10); ok {
-					currentHeight = height.Uint64()
+			// 尝试解析十六进制或十进制
+			heightStr = strings.TrimPrefix(heightStr, "0x")
+			if height, ok := new(big.Int).SetString(heightStr, 16); ok {
+				currentHeight = height.Uint64()
+			} else if height, ok := new(big.Int).SetString(heightStr, 10); ok {
+				currentHeight = height.Uint64()
 			}
 		}
 	}
@@ -394,7 +394,7 @@ func buildStakeTransaction(
 			"type":          "height_lock",
 			"unlock_height": unlockHeightStr,
 			"base_lock": map[string]interface{}{
-				"type":            "contract_lock",
+				"type":             "contract_lock",
 				"contract_address": hex.EncodeToString(stakingContractAddr),
 			},
 		}
@@ -404,7 +404,7 @@ func buildStakeTransaction(
 			"type":          "height_lock",
 			"unlock_height": unlockHeightStr,
 			"base_lock": map[string]interface{}{
-				"type":            "single_key_lock",
+				"type":             "single_key_lock",
 				"required_address": hex.EncodeToString(validatorAddr),
 			},
 		}
@@ -501,7 +501,7 @@ func buildUnstakeDraft(
 	client client.Client,
 	fromAddress []byte,
 	stakeID []byte, // StakeID（outpoint 格式：txHash:index）
-	amount uint64,  // 解质押金额（0表示全部）
+	amount uint64, // 解质押金额（0表示全部）
 ) ([]byte, uint32, error) {
 	// 0. 参数验证
 	if len(fromAddress) == 0 {
@@ -658,7 +658,7 @@ func buildUnstakeTransaction(
 	client client.Client,
 	fromAddress []byte,
 	stakeID []byte, // StakeID（可能是 outpoint 字符串或交易哈希）
-	amount uint64,  // 解质押金额（0表示全部）
+	amount uint64, // 解质押金额（0表示全部）
 ) ([]byte, error) {
 	// 1. 解析 StakeID（假设是 outpoint 格式：txHash:index）
 	stakeIDStr := string(stakeID)
@@ -934,10 +934,10 @@ func buildDelegateDraft(
 
 	// 8. 构建 DelegationLock 锁定条件
 	delegationLock := map[string]interface{}{
-		"type":                  "delegation_lock",
-		"original_owner":        hex.EncodeToString(fromAddress),
-		"allowed_delegates":    []string{hex.EncodeToString(validatorAddr)},
-		"authorized_operations": []string{"stake", "consume"},
+		"type":                    "delegation_lock",
+		"original_owner":          hex.EncodeToString(fromAddress),
+		"allowed_delegates":       []string{hex.EncodeToString(validatorAddr)},
+		"authorized_operations":   []string{"stake", "consume"},
 		"max_value_per_operation": fmt.Sprintf("%d", maxValuePerOperation),
 	}
 	if expiryDurationBlocks > 0 {
@@ -1099,10 +1099,10 @@ func buildDelegateTransaction(
 
 	// 9. 构建 DelegationLock 锁定条件
 	delegationLock := map[string]interface{}{
-		"type":                  "delegation_lock",
-		"original_owner":        hex.EncodeToString(fromAddress),
-		"allowed_delegates":    []string{hex.EncodeToString(validatorAddr)},
-		"authorized_operations": []string{"stake", "consume"},
+		"type":                    "delegation_lock",
+		"original_owner":          hex.EncodeToString(fromAddress),
+		"allowed_delegates":       []string{hex.EncodeToString(validatorAddr)},
+		"authorized_operations":   []string{"stake", "consume"},
 		"max_value_per_operation": fmt.Sprintf("%d", maxValuePerOperation),
 	}
 	if expiryDurationBlocks > 0 {
@@ -1200,7 +1200,7 @@ func buildUndelegateDraft(
 	client client.Client,
 	fromAddress []byte,
 	delegateID []byte, // DelegateID（outpoint 格式：txHash:index）
-	amount uint64,      // 取消委托金额（0表示全部）
+	amount uint64, // 取消委托金额（0表示全部）
 ) ([]byte, uint32, error) {
 	// 0. 参数验证
 	if len(fromAddress) == 0 {
@@ -1346,7 +1346,7 @@ func buildUndelegateTransaction(
 	client client.Client,
 	fromAddress []byte,
 	delegateID []byte, // DelegateID（outpoint 格式：txHash:index）
-	amount uint64,      // 取消委托金额（0表示全部）
+	amount uint64, // 取消委托金额（0表示全部）
 ) ([]byte, error) {
 	// 1. 解析 DelegateID（outpoint 格式：txHash:index）
 	delegateIDStr := string(delegateID)
@@ -1509,7 +1509,7 @@ func buildClaimRewardDraft(
 	ctx context.Context,
 	client client.Client,
 	fromAddress []byte,
-	stakeID []byte,    // StakeID（可选，outpoint 格式）
+	stakeID []byte, // StakeID（可选，outpoint 格式）
 	delegateID []byte, // DelegateID（可选，outpoint 格式）
 ) ([]byte, uint32, error) {
 	// 0. 参数验证
@@ -1683,7 +1683,7 @@ func buildClaimRewardTransaction(
 	ctx context.Context,
 	client client.Client,
 	fromAddress []byte,
-	stakeID []byte,    // StakeID（可选，outpoint 格式）
+	stakeID []byte, // StakeID（可选，outpoint 格式）
 	delegateID []byte, // DelegateID（可选，outpoint 格式）
 ) ([]byte, error) {
 	// 1. 将地址转换为 Base58 格式
@@ -1862,4 +1862,3 @@ func getString(m map[string]interface{}, key string) string {
 	}
 	return ""
 }
-

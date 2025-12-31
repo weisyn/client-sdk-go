@@ -45,7 +45,7 @@ func NewKeystoreManager(keystoreDir string) (*KeystoreManager, error) {
 	if err := os.MkdirAll(keystoreDir, 0700); err != nil {
 		return nil, fmt.Errorf("create keystore dir: %w", err)
 	}
-	
+
 	return &KeystoreManager{
 		keystoreDir: keystoreDir,
 	}, nil
@@ -62,19 +62,19 @@ func (km *KeystoreManager) Save(address string, privateKey []byte, password stri
 	if _, err := rand.Read(iv); err != nil {
 		return "", fmt.Errorf("generate iv: %w", err)
 	}
-	
+
 	// 2. 派生密钥（使用PBKDF2）
 	key := deriveKey(password, salt)
-	
+
 	// 3. 加密私钥
 	ciphertext, err := encryptAES(key, privateKey, iv)
 	if err != nil {
 		return "", fmt.Errorf("encrypt private key: %w", err)
 	}
-	
+
 	// 4. 计算MAC
 	mac := computeMAC(key, ciphertext)
-	
+
 	// 5. 构建Keystore结构
 	keystore := &Keystore{
 		Version: 1,
@@ -88,15 +88,15 @@ func (km *KeystoreManager) Save(address string, privateKey []byte, password stri
 			},
 			KDF: "pbkdf2",
 			KDFParams: map[string]interface{}{
-				"c":    262144,
+				"c":     262144,
 				"dklen": 32,
-				"prf":  "hmac-sha256",
-				"salt": hex.EncodeToString(salt),
+				"prf":   "hmac-sha256",
+				"salt":  hex.EncodeToString(salt),
 			},
 			MAC: hex.EncodeToString(mac),
 		},
 	}
-	
+
 	// 6. 保存到文件
 	keystorePath := filepath.Join(km.keystoreDir, fmt.Sprintf("%s.json", address))
 	file, err := os.Create(keystorePath)
@@ -104,13 +104,13 @@ func (km *KeystoreManager) Save(address string, privateKey []byte, password stri
 		return "", fmt.Errorf("create keystore file: %w", err)
 	}
 	defer file.Close()
-	
+
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(keystore); err != nil {
 		return "", fmt.Errorf("encode keystore: %w", err)
 	}
-	
+
 	return keystorePath, nil
 }
 
@@ -122,13 +122,13 @@ func (km *KeystoreManager) Load(address string, password string) ([]byte, error)
 	if err != nil {
 		return nil, fmt.Errorf("read keystore file: %w", err)
 	}
-	
+
 	// 2. 解析Keystore
 	var keystore Keystore
 	if err := json.Unmarshal(data, &keystore); err != nil {
 		return nil, fmt.Errorf("parse keystore: %w", err)
 	}
-	
+
 	// 3. 提取参数
 	saltHex, ok := keystore.Crypto.KDFParams["salt"].(string)
 	if !ok {
@@ -138,20 +138,20 @@ func (km *KeystoreManager) Load(address string, password string) ([]byte, error)
 	if err != nil {
 		return nil, fmt.Errorf("decode salt: %w", err)
 	}
-	
+
 	iv, err := hex.DecodeString(keystore.Crypto.CipherParams.IV)
 	if err != nil {
 		return nil, fmt.Errorf("decode iv: %w", err)
 	}
-	
+
 	ciphertext, err := hex.DecodeString(keystore.Crypto.CipherText)
 	if err != nil {
 		return nil, fmt.Errorf("decode ciphertext: %w", err)
 	}
-	
+
 	// 4. 派生密钥
 	key := deriveKey(password, salt)
-	
+
 	// 5. 验证MAC
 	expectedMAC := computeMAC(key, ciphertext)
 	actualMAC, err := hex.DecodeString(keystore.Crypto.MAC)
@@ -161,13 +161,13 @@ func (km *KeystoreManager) Load(address string, password string) ([]byte, error)
 	if !equalMAC(expectedMAC, actualMAC) {
 		return nil, fmt.Errorf("invalid password")
 	}
-	
+
 	// 6. 解密私钥
 	privateKey, err := decryptAES(key, ciphertext, iv)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt private key: %w", err)
 	}
-	
+
 	return privateKey, nil
 }
 
@@ -185,11 +185,11 @@ func encryptAES(key, plaintext, iv []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	stream := cipher.NewCTR(block, iv)
 	ciphertext := make([]byte, len(plaintext))
 	stream.XORKeyStream(ciphertext, plaintext)
-	
+
 	return ciphertext, nil
 }
 
@@ -199,11 +199,11 @@ func decryptAES(key, ciphertext, iv []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	stream := cipher.NewCTR(block, iv)
 	plaintext := make([]byte, len(ciphertext))
 	stream.XORKeyStream(plaintext, ciphertext)
-	
+
 	return plaintext, nil
 }
 
@@ -232,4 +232,3 @@ func generateID() string {
 	rand.Read(id)
 	return hex.EncodeToString(id)
 }
-

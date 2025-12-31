@@ -19,7 +19,7 @@ import (
 // **架构说明**：
 // CreateEscrow 业务语义在 SDK 层，通过查询 UTXO、构建交易实现。
 // 托管使用 MultiKeyLock 锁定条件（买方和卖方都需要签名才能解锁）。
-// 
+//
 // **流程**：
 // 1. 调用 `buildEscrowTransaction` 在 SDK 层构建未签名交易
 // 2. 使用 Wallet 签名未签名交易
@@ -189,7 +189,7 @@ func (s *marketService) validateCreateEscrowRequest(req *CreateEscrowRequest) er
 // **架构说明**：
 // ReleaseEscrow 业务语义在 SDK 层，通过查询托管 UTXO、构建交易实现。
 // 释放托管需要消费带有 MultiKeyLock 的托管 UTXO（需要买方和卖方签名）。
-// 
+//
 // **流程**：
 // 1. 调用 `buildReleaseEscrowTransaction` 在 SDK 层构建未签名交易
 // 2. 使用 Wallet 签名未签名交易
@@ -335,7 +335,7 @@ func (s *marketService) validateReleaseEscrowRequest(req *ReleaseEscrowRequest) 
 // **架构说明**：
 // RefundEscrow 业务语义在 SDK 层，通过查询托管 UTXO、构建交易实现。
 // 退款托管需要消费带有 MultiKeyLock 的托管 UTXO（过期后可以退款给买方）。
-// 
+//
 // **流程**：
 // 1. 调用 `buildRefundEscrowTransaction` 在 SDK 层构建未签名交易
 // 2. 使用 Wallet 签名未签名交易
@@ -473,4 +473,3 @@ func (s *marketService) validateRefundEscrowRequest(req *RefundEscrowRequest) er
 
 	return nil
 }
-

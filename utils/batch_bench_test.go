@@ -17,7 +17,7 @@ func BenchmarkBatchQuery(b *testing.B) {
 		_, _ = BatchQuery(ctx, items, func(ctx context.Context, item int, index int) (int, error) {
 			return item * 2, nil
 		}, &BatchConfig{
-			BatchSize:  50,
+			BatchSize:   50,
 			Concurrency: 5,
 		})
 	}
@@ -35,7 +35,7 @@ func BenchmarkBatchQuery_NoConcurrency(b *testing.B) {
 		_, _ = BatchQuery(ctx, items, func(ctx context.Context, item int, index int) (int, error) {
 			return item * 2, nil
 		}, &BatchConfig{
-			BatchSize:  50,
+			BatchSize:   50,
 			Concurrency: 1,
 		})
 	}
@@ -53,7 +53,7 @@ func BenchmarkBatchQuery_HighConcurrency(b *testing.B) {
 		_, _ = BatchQuery(ctx, items, func(ctx context.Context, item int, index int) (int, error) {
 			return item * 2, nil
 		}, &BatchConfig{
-			BatchSize:  50,
+			BatchSize:   50,
 			Concurrency: 20,
 		})
 	}
@@ -93,4 +93,3 @@ func BenchmarkBatchArray(b *testing.B) {
 		_ = BatchArray(array, batchSize)
 	}
 }
-

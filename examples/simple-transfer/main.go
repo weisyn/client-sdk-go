@@ -15,12 +15,12 @@ import (
 func main() {
 	// 1. 创建客户端
 	cfg := &client.Config{
-		Endpoint: "http://localhost:8545",
+		Endpoint: "http://localhost:28680/jsonrpc",
 		Protocol: client.ProtocolHTTP,
 		Timeout:  30,
 		Debug:    true,
 	}
-	
+
 	httpClient, err := client.NewClient(cfg)
 	if err != nil {
 		log.Fatalf("创建客户端失败: %v", err)
@@ -34,7 +34,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("创建钱包失败: %v", err)
 	}
-	
+
 	fmt.Printf("钱包地址: %s\n", hex.EncodeToString(wallet.Address()))
 
 	// 3. 创建Token服务
@@ -49,19 +49,19 @@ func main() {
 	// 5. 执行转账
 	ctx := context.Background()
 	result, err := tokenService.Transfer(ctx, &token.TransferRequest{
-		From:   fromAddr,
-		To:     toAddr,
-		Amount: 1000, // 转账金额
-		TokenID: nil, // nil表示原生币
+		From:    fromAddr,
+		To:      toAddr,
+		Amount:  1000, // 转账金额
+		TokenID: nil,  // nil表示原生币
 	}, wallet)
-	
+
 	if err != nil {
 		// 检查是否是 WES Error
 		if wesErr, ok := types.IsWesError(err); ok {
 			log.Printf("转账失败 [%s]: %s", wesErr.Code, wesErr.UserMessage)
 			log.Printf("技术详情: %s", wesErr.Detail)
 			log.Printf("追踪ID: %s", wesErr.TraceID)
-			
+
 			// 根据错误码进行不同处理
 			switch wesErr.Code {
 			case "BC_INSUFFICIENT_BALANCE":
@@ -80,4 +80,3 @@ func main() {
 	fmt.Printf("转账成功！\n")
 	fmt.Printf("交易哈希: %s\n", result.TxHash)
 }
-

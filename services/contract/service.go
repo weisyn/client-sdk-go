@@ -50,25 +50,25 @@ func (s *contractService) getWallet(wallets ...wallet.Wallet) wallet.Wallet {
 
 // CallContractRequest 合约调用请求
 type CallContractRequest struct {
-	ContractAddress []byte   // 合约地址（contentHash，32字节）
-	Method          string   // 方法名
+	ContractAddress []byte        // 合约地址（contentHash，32字节）
+	Method          string        // 方法名
 	Args            []interface{} // 方法参数
-	From            []byte   // 调用者地址（20字节）
-	Amount          *uint64  // 可选：金额（如果需要转账）
-	TokenID         []byte   // 可选：代币 ID（如果需要转账代币）
+	From            []byte        // 调用者地址（20字节）
+	Amount          *uint64       // 可选：金额（如果需要转账）
+	TokenID         []byte        // 可选：代币 ID（如果需要转账代币）
 }
 
 // CallContractResult 合约调用结果
 type CallContractResult struct {
-	TxHash      string // 交易哈希
-	Success     bool   // 是否成功
+	TxHash      string  // 交易哈希
+	Success     bool    // 是否成功
 	BlockHeight *uint64 // 区块高度（如果已确认）
 }
 
 // QueryContractRequest 合约查询请求（只读）
 type QueryContractRequest struct {
-	ContractAddress []byte   // 合约地址（contentHash，32字节）
-	Method          string   // 方法名
+	ContractAddress []byte        // 合约地址（contentHash，32字节）
+	Method          string        // 方法名
 	Args            []interface{} // 方法参数
 }
 
@@ -100,10 +100,10 @@ func (s *contractService) CallContract(ctx context.Context, req *CallContractReq
 	// 4. 调用 wes_callContract，设置 return_unsigned_tx=true
 	contractAddressHex := "0x" + hex.EncodeToString(req.ContractAddress)
 	callParams := map[string]interface{}{
-		"content_hash":      contractAddressHex,
-		"method":            req.Method,
-		"params":            req.Args,
-		"payload":           payloadBase64,
+		"content_hash":       contractAddressHex,
+		"method":             req.Method,
+		"params":             req.Args,
+		"payload":            payloadBase64,
 		"return_unsigned_tx": true,
 	}
 
@@ -195,4 +195,3 @@ func (s *contractService) QueryContract(ctx context.Context, req *QueryContractR
 
 	return callResult, nil
 }
-

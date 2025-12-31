@@ -187,7 +187,7 @@ func (s *stakingService) validateStakeRequest(req *StakeRequest) error {
 // **架构说明**：
 // Unstake 业务语义在 SDK 层，通过查询质押 UTXO、构建交易实现。
 // 解质押需要消费带有 HeightLock 的质押 UTXO。
-// 
+//
 // **流程**：
 // 1. 调用 `buildUnstakeTransaction` 在 SDK 层构建未签名交易
 // 2. 使用 Wallet 签名未签名交易
@@ -308,7 +308,7 @@ func (s *stakingService) unstake(ctx context.Context, req *UnstakeRequest, walle
 	if err == nil && parsedTx != nil {
 		// 查找返回给用户的输出（owner 是解质押者地址）
 		userOutputs := utils.FindOutputsByOwner(parsedTx.Outputs, req.From)
-		
+
 		// 汇总原生币金额（解质押金额 + 奖励）
 		totalAmount := utils.SumAmountsByToken(userOutputs, nil)
 		if totalAmount != nil {
@@ -342,4 +342,3 @@ func (s *stakingService) validateUnstakeRequest(req *UnstakeRequest) error {
 
 	return nil
 }
-

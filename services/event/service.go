@@ -62,7 +62,7 @@ func (s *eventService) GetEvents(ctx context.Context, filters *EventFilters) ([]
 		if filters.Limit > 0 {
 			req["limit"] = filters.Limit
 		}
-		if filters.Offset > 0 {
+		if filters.Offset >= 0 { // 允许 offset 为 0（与 client-sdk-js 保持一致）
 			req["offset"] = filters.Offset
 		}
 	}
@@ -130,4 +130,3 @@ func decodeEventArray(raw interface{}) ([]*EventInfo, error) {
 	// 这里需要根据实际的 RPC 返回格式实现
 	return []*EventInfo{}, nil
 }
-

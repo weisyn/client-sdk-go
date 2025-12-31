@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -45,11 +46,38 @@ type WESClient interface {
 
 	// 连接管理
 	Close() error
+
+	// ========== 新增 API 方法 ==========
+
+	// 区块查询
+	GetBlockByHeight(ctx context.Context, height uint64, fullTx bool) (*BlockInfo, error)
+	GetBlockByHash(ctx context.Context, hash []byte, fullTx bool) (*BlockInfo, error)
+
+	// 交易收据
+	GetTransactionReceipt(ctx context.Context, txHash string) (*TransactionReceipt, error)
+
+	// 费用估算
+	EstimateFee(ctx context.Context, tx Transaction) (*FeeEstimate, error)
+
+	// 同步状态
+	GetSyncStatus(ctx context.Context) (*SyncStatus, error)
+
+	// 只读合约调用
+	ContractCall(ctx context.Context, contractHash []byte, method string, params []uint64, payload []byte) ([]byte, error)
+
+	// 订阅管理
+	Unsubscribe(ctx context.Context, subscriptionID string) (bool, error)
+
+	// 合约代币余额
+	GetContractTokenBalance(ctx context.Context, address []byte, contractHash []byte, tokenID string) (*TokenBalance, error)
+
+	// AI 模型推理
+	CallAIModel(ctx context.Context, req *AIModelCallRequest) (*AIModelCallResult, error)
 }
 
 // wesClientImpl WESClient 实现类
 type wesClientImpl struct {
-	client            Client
+	client             Client
 	supportsBatchQuery bool
 }
 
@@ -61,7 +89,7 @@ func NewWESClient(config *Config) (WESClient, error) {
 	}
 
 	return &wesClientImpl{
-		client:            client,
+		client:             client,
 		supportsBatchQuery: false, // 当前节点不支持批量 RPC，使用并发模拟
 	}, nil
 }
@@ -69,7 +97,7 @@ func NewWESClient(config *Config) (WESClient, error) {
 // NewWESClientFromClient 从现有 Client 创建 WESClient
 func NewWESClientFromClient(client Client) WESClient {
 	return &wesClientImpl{
-		client:            client,
+		client:             client,
 		supportsBatchQuery: false,
 	}
 }
@@ -176,7 +204,7 @@ func addressBase58ToBytes(base58Addr string) ([]byte, error) {
 
 	// 验证校验和
 	versionedAddress := decoded[:21] // 版本字节 + 地址哈希
-	checksum := decoded[21:]          // 校验和
+	checksum := decoded[21:]         // 校验和
 
 	hash1 := sha256.Sum256(versionedAddress)
 	hash2 := sha256.Sum256(hash1[:])
@@ -245,14 +273,15 @@ func (c *wesClientImpl) GetResources(ctx context.Context, filters *ResourceFilte
 		if filters.Limit > 0 {
 			req["limit"] = filters.Limit
 		}
-		if filters.Offset > 0 {
+		if filters.Offset >= 0 { // 允许 offset 为 0（与 client-sdk-js 保持一致）
 			req["offset"] = filters.Offset
 		}
 	}
 
-	raw, err := c.client.Call(ctx, "wes_getResources", []interface{}{map[string]interface{}{"filters": req}})
+	// ✅ 已迁移到 wes_listResources（基于 UTXO 视图）
+	raw, err := c.client.Call(ctx, "wes_listResources", []interface{}{map[string]interface{}{"filters": req}})
 	if err != nil {
-		return nil, wrapRPCError("wes_getResources", err)
+		return nil, wrapRPCError("wes_listResources", err)
 	}
 
 	wire, err := decodeResourceArray(raw)
@@ -322,7 +351,7 @@ func (c *wesClientImpl) GetTransactionHistory(ctx context.Context, filters *Tran
 		if filters.Limit > 0 {
 			req["limit"] = filters.Limit
 		}
-		if filters.Offset > 0 {
+		if filters.Offset >= 0 { // 允许 offset 为 0（与 client-sdk-js 保持一致）
 			req["offset"] = filters.Offset
 		}
 	}
@@ -395,7 +424,7 @@ func (c *wesClientImpl) GetEvents(ctx context.Context, filters *EventFilters) ([
 		if filters.Limit > 0 {
 			req["limit"] = filters.Limit
 		}
-		if filters.Offset > 0 {
+		if filters.Offset >= 0 { // 允许 offset 为 0（与 client-sdk-js 保持一致）
 			req["offset"] = filters.Offset
 		}
 	}
@@ -533,8 +562,8 @@ func (c *wesClientImpl) GetNodeInfo(ctx context.Context) (*NodeInfo, error) {
 	}
 
 	return &NodeInfo{
-		RPCVersion: "1.0.0", // TODO: 从节点获取实际版本
-		ChainID:    chainIDRes.chainID,
+		RPCVersion:  "1.0.0", // TODO: 从节点获取实际版本
+		ChainID:     chainIDRes.chainID,
 		BlockHeight: blockNumberRes.blockNumber,
 	}, nil
 }
@@ -556,7 +585,7 @@ func (c *wesClientImpl) BatchGetResources(ctx context.Context, resourceIDs [][32
 		wg.Add(1)
 		go func(idx int, rid [32]byte) {
 			defer wg.Done()
-			sem <- struct{}{} // 获取信号量
+			sem <- struct{}{}        // 获取信号量
 			defer func() { <-sem }() // 释放信号量
 
 			resource, err := c.GetResource(ctx, rid)
@@ -1128,3 +1157,632 @@ func hexStringToBytes(hexStr string) ([]byte, error) {
 	return hex.DecodeString(cleanHex)
 }
 
+// ========== 新增 API 方法实现 ==========
+
+// GetBlockByHeight 按高度查询区块
+func (c *wesClientImpl) GetBlockByHeight(ctx context.Context, height uint64, fullTx bool) (*BlockInfo, error) {
+	// 构建参数：高度使用十六进制格式
+	params := []interface{}{fmt.Sprintf("0x%x", height), fullTx}
+
+	raw, err := c.client.Call(ctx, "wes_getBlockByHeight", params)
+	if err != nil {
+		return nil, wrapRPCError("wes_getBlockByHeight", err)
+	}
+
+	if raw == nil {
+		return nil, nil // 区块不存在
+	}
+
+	return decodeBlockInfo(raw, fullTx)
+}
+
+// GetBlockByHash 按哈希查询区块
+func (c *wesClientImpl) GetBlockByHash(ctx context.Context, hash []byte, fullTx bool) (*BlockInfo, error) {
+	if len(hash) != 32 {
+		return nil, &WESClientError{
+			Code:    WESErrCodeInvalidParams,
+			Message: "block hash must be 32 bytes",
+		}
+	}
+
+	// 构建参数：哈希使用十六进制格式
+	hashHex := "0x" + hex.EncodeToString(hash)
+	params := []interface{}{hashHex, fullTx}
+
+	raw, err := c.client.Call(ctx, "wes_getBlockByHash", params)
+	if err != nil {
+		return nil, wrapRPCError("wes_getBlockByHash", err)
+	}
+
+	if raw == nil {
+		return nil, nil // 区块不存在
+	}
+
+	return decodeBlockInfo(raw, fullTx)
+}
+
+// decodeBlockInfo 解码区块信息
+func decodeBlockInfo(raw interface{}, fullTx bool) (*BlockInfo, error) {
+	blockMap, ok := raw.(map[string]interface{})
+	if !ok {
+		return nil, &WESClientError{
+			Code:    WESErrCodeDecodeFailed,
+			Message: "invalid block response format",
+		}
+	}
+
+	block := &BlockInfo{}
+
+	// 解析高度
+	if h, ok := blockMap["height"].(float64); ok {
+		block.Height = uint64(h)
+	} else if hStr, ok := blockMap["height"].(string); ok {
+		cleanHex := strings.TrimPrefix(hStr, "0x")
+		if parsed, err := strconv.ParseUint(cleanHex, 16, 64); err == nil {
+			block.Height = parsed
+		}
+	}
+
+	// 解析哈希
+	if hashStr, ok := blockMap["hash"].(string); ok {
+		if hashBytes, err := hexStringToBytes(hashStr); err == nil {
+			block.Hash = hashBytes
+		}
+	} else if hashStr, ok := blockMap["block_hash"].(string); ok {
+		if hashBytes, err := hexStringToBytes(hashStr); err == nil {
+			block.Hash = hashBytes
+		}
+	}
+
+	// 解析父哈希
+	if parentStr, ok := blockMap["parent_hash"].(string); ok {
+		if parentBytes, err := hexStringToBytes(parentStr); err == nil {
+			block.ParentHash = parentBytes
+		}
+	} else if parentStr, ok := blockMap["parentHash"].(string); ok {
+		if parentBytes, err := hexStringToBytes(parentStr); err == nil {
+			block.ParentHash = parentBytes
+		}
+	}
+
+	// 解析时间戳
+	if tsStr, ok := blockMap["timestamp"].(string); ok {
+		if t, err := time.Parse(time.RFC3339, tsStr); err == nil {
+			block.Timestamp = t
+		}
+	} else if ts, ok := blockMap["timestamp"].(float64); ok {
+		block.Timestamp = time.Unix(int64(ts), 0)
+	}
+
+	// 解析状态根
+	if stateRootStr, ok := blockMap["state_root"].(string); ok {
+		if stateRootBytes, err := hexStringToBytes(stateRootStr); err == nil {
+			block.StateRoot = stateRootBytes
+		}
+	} else if stateRootStr, ok := blockMap["stateRoot"].(string); ok {
+		if stateRootBytes, err := hexStringToBytes(stateRootStr); err == nil {
+			block.StateRoot = stateRootBytes
+		}
+	}
+
+	// 解析难度
+	if diff, ok := blockMap["difficulty"].(string); ok {
+		block.Difficulty = diff
+	}
+
+	// 解析矿工
+	if miner, ok := blockMap["miner"].(string); ok {
+		block.Miner = miner
+	}
+
+	// 解析大小
+	if size, ok := blockMap["size"].(float64); ok {
+		block.Size = int(size)
+	}
+
+	// 解析交易数量
+	if txCount, ok := blockMap["tx_count"].(float64); ok {
+		block.TxCount = int(txCount)
+	}
+
+	// 解析交易列表
+	if fullTx {
+		if txs, ok := blockMap["transactions"].([]interface{}); ok {
+			block.Transactions = txs
+			block.TxCount = len(txs)
+		}
+	} else {
+		if txHashes, ok := blockMap["tx_hashes"].([]interface{}); ok {
+			for _, h := range txHashes {
+				if hStr, ok := h.(string); ok {
+					block.TxHashes = append(block.TxHashes, hStr)
+				}
+			}
+			block.TxCount = len(block.TxHashes)
+		}
+	}
+
+	return block, nil
+}
+
+// GetTransactionReceipt 获取交易收据
+func (c *wesClientImpl) GetTransactionReceipt(ctx context.Context, txHash string) (*TransactionReceipt, error) {
+	if txHash == "" {
+		return nil, &WESClientError{
+			Code:    WESErrCodeInvalidParams,
+			Message: "transaction hash is required",
+		}
+	}
+
+	// 确保哈希有 0x 前缀
+	if !strings.HasPrefix(txHash, "0x") {
+		txHash = "0x" + txHash
+	}
+
+	params := []interface{}{txHash}
+	raw, err := c.client.Call(ctx, "wes_getTransactionReceipt", params)
+	if err != nil {
+		return nil, wrapRPCError("wes_getTransactionReceipt", err)
+	}
+
+	if raw == nil {
+		return nil, nil // 收据不存在
+	}
+
+	return decodeTransactionReceipt(raw)
+}
+
+// decodeTransactionReceipt 解码交易收据
+func decodeTransactionReceipt(raw interface{}) (*TransactionReceipt, error) {
+	receiptMap, ok := raw.(map[string]interface{})
+	if !ok {
+		return nil, &WESClientError{
+			Code:    WESErrCodeDecodeFailed,
+			Message: "invalid transaction receipt format",
+		}
+	}
+
+	receipt := &TransactionReceipt{}
+
+	// 节点真实返回字段（internal/api/jsonrpc/methods/tx.go）：
+	// tx_hash, tx_index, block_height, block_hash, status("0x1"/"0x0"), state_root, timestamp, execution_result_hash, statusReason
+
+	if txHash, ok := receiptMap["tx_hash"].(string); ok {
+		receipt.TxHash = txHash
+	}
+
+	if idx, ok := receiptMap["tx_index"].(float64); ok {
+		receipt.TxIndex = uint32(idx)
+	}
+
+	if bh, ok := receiptMap["block_height"].(float64); ok {
+		receipt.BlockHeight = uint64(bh)
+	} else if bhStr, ok := receiptMap["block_height"].(string); ok {
+		cleanHex := strings.TrimPrefix(bhStr, "0x")
+		if parsed, err := strconv.ParseUint(cleanHex, 16, 64); err == nil {
+			receipt.BlockHeight = parsed
+		}
+	}
+
+	if bhStr, ok := receiptMap["block_hash"].(string); ok && bhStr != "" {
+		if bhBytes, err := hexStringToBytes(bhStr); err == nil {
+			receipt.BlockHash = bhBytes
+		}
+	}
+
+	if status, ok := receiptMap["status"].(string); ok {
+		receipt.Status = status
+	}
+	if reason, ok := receiptMap["statusReason"].(string); ok {
+		receipt.StatusReason = reason
+	}
+
+	if execHash, ok := receiptMap["execution_result_hash"].(string); ok && execHash != "" {
+		if b, err := hexStringToBytes(execHash); err == nil {
+			receipt.ExecutionResultHash = b
+		}
+	}
+
+	if sr, ok := receiptMap["state_root"].(string); ok && sr != "" {
+		if b, err := hexStringToBytes(sr); err == nil {
+			receipt.StateRoot = b
+		}
+	}
+
+	if ts, ok := receiptMap["timestamp"].(float64); ok {
+		receipt.Timestamp = uint64(ts)
+	} else if ts, ok := receiptMap["timestamp"].(uint64); ok {
+		receipt.Timestamp = ts
+	}
+
+	return receipt, nil
+}
+
+// EstimateFee 估算交易费用
+func (c *wesClientImpl) EstimateFee(ctx context.Context, tx Transaction) (*FeeEstimate, error) {
+	// 节点端 wes_estimateFee 要求 params[0] 为“交易草稿对象”而不是已签名 hex
+	// 允许调用方传 map[string]interface{} 作为草稿；如果传 string(已签名hex)，直接报错避免误用
+	if _, ok := tx.(string); ok {
+		return nil, &WESClientError{
+			Code:    WESErrCodeInvalidParams,
+			Message: "wes_estimateFee expects a transaction draft object, not signed tx hex string",
+		}
+	}
+
+	params := []interface{}{tx}
+	raw, err := c.client.Call(ctx, "wes_estimateFee", params)
+	if err != nil {
+		return nil, wrapRPCError("wes_estimateFee", err)
+	}
+
+	return decodeFeeEstimate(raw)
+}
+
+// decodeFeeEstimate 解码费用估算结果
+func decodeFeeEstimate(raw interface{}) (*FeeEstimate, error) {
+	feeMap, ok := raw.(map[string]interface{})
+	if !ok {
+		return nil, &WESClientError{
+			Code:    WESErrCodeDecodeFailed,
+			Message: "invalid fee estimate format",
+		}
+	}
+
+	fee := &FeeEstimate{}
+
+	// 节点真实返回字段：estimated_fee, fee_rate, num_inputs, num_outputs
+	if v, ok := feeMap["estimated_fee"].(float64); ok {
+		fee.EstimatedFee = uint64(v)
+	} else if v, ok := feeMap["estimated_fee"].(uint64); ok {
+		fee.EstimatedFee = v
+	}
+
+	if v, ok := feeMap["fee_rate"].(string); ok {
+		fee.FeeRate = v
+	}
+
+	if v, ok := feeMap["num_inputs"].(float64); ok {
+		fee.NumInputs = int(v)
+	}
+	if v, ok := feeMap["num_outputs"].(float64); ok {
+		fee.NumOutputs = int(v)
+	}
+
+	return fee, nil
+}
+
+// GetSyncStatus 获取节点同步状态
+func (c *wesClientImpl) GetSyncStatus(ctx context.Context) (*SyncStatus, error) {
+	raw, err := c.client.Call(ctx, "wes_syncing", nil)
+	if err != nil {
+		return nil, wrapRPCError("wes_syncing", err)
+	}
+
+	// 如果返回 false，表示已同步
+	if syncing, ok := raw.(bool); ok && !syncing {
+		return &SyncStatus{
+			Syncing:  false,
+			Progress: 1.0,
+		}, nil
+	}
+
+	// 否则解析同步状态对象
+	return decodeSyncStatus(raw)
+}
+
+// decodeSyncStatus 解码同步状态
+func decodeSyncStatus(raw interface{}) (*SyncStatus, error) {
+	syncMap, ok := raw.(map[string]interface{})
+	if !ok {
+		return nil, &WESClientError{
+			Code:    WESErrCodeDecodeFailed,
+			Message: "invalid sync status format",
+		}
+	}
+
+	status := &SyncStatus{
+		Syncing: true,
+	}
+
+	// 解析起始区块
+	if startBlock, ok := syncMap["startingBlock"].(string); ok {
+		if parsed, err := strconv.ParseUint(strings.TrimPrefix(startBlock, "0x"), 16, 64); err == nil {
+			status.StartingBlock = parsed
+		}
+	}
+
+	// 解析当前区块
+	if currentBlock, ok := syncMap["currentBlock"].(string); ok {
+		if parsed, err := strconv.ParseUint(strings.TrimPrefix(currentBlock, "0x"), 16, 64); err == nil {
+			status.CurrentHeight = parsed
+		}
+	}
+
+	// 解析最高区块
+	if highestBlock, ok := syncMap["highestBlock"].(string); ok {
+		if parsed, err := strconv.ParseUint(strings.TrimPrefix(highestBlock, "0x"), 16, 64); err == nil {
+			status.HighestHeight = parsed
+		}
+	}
+
+	// 计算进度
+	if status.HighestHeight > 0 {
+		status.Progress = float64(status.CurrentHeight) / float64(status.HighestHeight)
+	}
+
+	return status, nil
+}
+
+// ContractCall 只读合约调用
+func (c *wesClientImpl) ContractCall(ctx context.Context, contractHash []byte, method string, params []uint64, payload []byte) ([]byte, error) {
+	if len(contractHash) != 32 {
+		return nil, &WESClientError{
+			Code:    WESErrCodeInvalidParams,
+			Message: "contract hash must be 32 bytes",
+		}
+	}
+
+	if method == "" {
+		return nil, &WESClientError{
+			Code:    WESErrCodeInvalidParams,
+			Message: "method name is required",
+		}
+	}
+
+	// 节点端只解析 callData["data"]（支持 JSON string / 0xhex(json bytes) / 直接方法名）
+	// 为了携带 params/payload，这里统一用 JSON string 形式：{"method":"...","params":[...],"payload":"0x..."}
+	callSpec := map[string]interface{}{
+		"method": method,
+	}
+	if len(params) > 0 {
+		callSpec["params"] = params
+	}
+	if len(payload) > 0 {
+		callSpec["payload"] = "0x" + hex.EncodeToString(payload)
+	}
+	specBytes, _ := json.Marshal(callSpec)
+
+	callData := map[string]interface{}{
+		"to":   "0x" + hex.EncodeToString(contractHash),
+		"data": string(specBytes),
+	}
+
+	raw, err := c.client.Call(ctx, "wes_call", []interface{}{callData})
+	if err != nil {
+		return nil, wrapRPCError("wes_call", err)
+	}
+
+	// 解析返回数据
+	resultMap, ok := raw.(map[string]interface{})
+	if !ok {
+		return nil, &WESClientError{
+			Code:    WESErrCodeDecodeFailed,
+			Message: "invalid call result format",
+		}
+	}
+
+	// 提取返回数据
+	if returnData, ok := resultMap["return_data"].(string); ok {
+		return hexStringToBytes(returnData)
+	}
+
+	if returnData, ok := resultMap["returnData"].(string); ok {
+		return hexStringToBytes(returnData)
+	}
+
+	return nil, nil
+}
+
+// Unsubscribe 取消订阅
+func (c *wesClientImpl) Unsubscribe(ctx context.Context, subscriptionID string) (bool, error) {
+	if subscriptionID == "" {
+		return false, &WESClientError{
+			Code:    WESErrCodeInvalidParams,
+			Message: "subscription ID is required",
+		}
+	}
+
+	params := []interface{}{subscriptionID}
+	raw, err := c.client.Call(ctx, "wes_unsubscribe", params)
+	if err != nil {
+		return false, wrapRPCError("wes_unsubscribe", err)
+	}
+
+	// 解析结果
+	if result, ok := raw.(bool); ok {
+		return result, nil
+	}
+
+	return false, nil
+}
+
+// GetContractTokenBalance 查询合约代币余额
+func (c *wesClientImpl) GetContractTokenBalance(ctx context.Context, address []byte, contractHash []byte, tokenID string) (*TokenBalance, error) {
+	if len(address) != 20 {
+		return nil, &WESClientError{
+			Code:    WESErrCodeInvalidParams,
+			Message: "address must be 20 bytes",
+		}
+	}
+
+	if len(contractHash) != 32 {
+		return nil, &WESClientError{
+			Code:    WESErrCodeInvalidParams,
+			Message: "contract hash must be 32 bytes",
+		}
+	}
+
+	// 将地址转换为 Base58 格式
+	addressBase58, err := addressBytesToBase58(address)
+	if err != nil {
+		return nil, &WESClientError{
+			Code:    WESErrCodeInvalidParams,
+			Message: fmt.Sprintf("convert address to Base58 failed: %v", err),
+			Cause:   err,
+		}
+	}
+
+	// 构建请求参数
+	reqParams := map[string]interface{}{
+		"address":      addressBase58,
+		"content_hash": hex.EncodeToString(contractHash),
+	}
+
+	if tokenID != "" {
+		reqParams["token_id"] = tokenID
+	}
+
+	raw, err := c.client.Call(ctx, "wes_getContractTokenBalance", []interface{}{reqParams})
+	if err != nil {
+		return nil, wrapRPCError("wes_getContractTokenBalance", err)
+	}
+
+	return decodeTokenBalance(raw)
+}
+
+// decodeTokenBalance 解码代币余额
+func decodeTokenBalance(raw interface{}) (*TokenBalance, error) {
+	balanceMap, ok := raw.(map[string]interface{})
+	if !ok {
+		return nil, &WESClientError{
+			Code:    WESErrCodeDecodeFailed,
+			Message: "invalid token balance format",
+		}
+	}
+
+	balance := &TokenBalance{}
+
+	// 解析地址
+	if addr, ok := balanceMap["address"].(string); ok {
+		balance.Address = addr
+	}
+
+	// 解析合约哈希
+	if ch, ok := balanceMap["content_hash"].(string); ok {
+		balance.ContractHash = ch
+	}
+
+	// 解析合约地址
+	if ca, ok := balanceMap["contract_address"].(string); ok {
+		balance.ContractAddress = ca
+	}
+
+	// 解析代币 ID
+	if tid, ok := balanceMap["token_id"].(string); ok {
+		balance.TokenID = tid
+	}
+
+	// 解析余额（字符串格式）
+	if bal, ok := balanceMap["balance"].(string); ok {
+		balance.Balance = bal
+	}
+
+	// 解析余额（uint64 格式）
+	if balUint64, ok := balanceMap["balance_uint64"].(float64); ok {
+		balance.BalanceUint64 = uint64(balUint64)
+	}
+
+	// 解析 UTXO 数量
+	if utxoCount, ok := balanceMap["utxo_count"].(float64); ok {
+		balance.UTXOCount = int(utxoCount)
+	}
+
+	// 解析区块高度
+	if height, ok := balanceMap["height"].(float64); ok {
+		balance.Height = uint64(height)
+	}
+
+	return balance, nil
+}
+
+// CallAIModel 调用 AI 模型
+func (c *wesClientImpl) CallAIModel(ctx context.Context, req *AIModelCallRequest) (*AIModelCallResult, error) {
+	if req == nil {
+		return nil, &WESClientError{
+			Code:    WESErrCodeInvalidParams,
+			Message: "request is required",
+		}
+	}
+
+	if len(req.ModelHash) != 32 {
+		return nil, &WESClientError{
+			Code:    WESErrCodeInvalidParams,
+			Message: "model hash must be 32 bytes",
+		}
+	}
+	if len(req.Inputs) == 0 {
+		return nil, &WESClientError{
+			Code:    WESErrCodeInvalidParams,
+			Message: "inputs is required and cannot be empty",
+		}
+	}
+	if !req.ReturnUnsignedTx && strings.TrimSpace(req.PrivateKey) == "" {
+		return nil, &WESClientError{
+			Code:    WESErrCodeInvalidParams,
+			Message: "private_key is required when return_unsigned_tx is false",
+		}
+	}
+
+	// 构建请求参数
+	reqParams := map[string]interface{}{
+		"model_hash":         "0x" + hex.EncodeToString(req.ModelHash),
+		"inputs":             req.Inputs,
+		"return_unsigned_tx": req.ReturnUnsignedTx,
+	}
+
+	if strings.TrimSpace(req.PrivateKey) != "" {
+		reqParams["private_key"] = req.PrivateKey
+	}
+
+	if strings.TrimSpace(req.PaymentToken) != "" {
+		reqParams["payment_token"] = req.PaymentToken
+	}
+
+	raw, err := c.client.Call(ctx, "wes_callAIModel", []interface{}{reqParams})
+	if err != nil {
+		return nil, wrapRPCError("wes_callAIModel", err)
+	}
+
+	return decodeAIModelCallResult(raw)
+}
+
+// decodeAIModelCallResult 解码 AI 模型调用结果
+func decodeAIModelCallResult(raw interface{}) (*AIModelCallResult, error) {
+	resultMap, ok := raw.(map[string]interface{})
+	if !ok {
+		return nil, &WESClientError{
+			Code:    WESErrCodeDecodeFailed,
+			Message: "invalid AI model call result format",
+		}
+	}
+
+	result := &AIModelCallResult{}
+
+	// 解析成功标志
+	if success, ok := resultMap["success"].(bool); ok {
+		result.Success = success
+	}
+
+	// tx_hash
+	if txHash, ok := resultMap["tx_hash"].(string); ok {
+		result.TxHash = txHash
+	}
+	// unsigned_tx（当 return_unsigned_tx=true）
+	if utx, ok := resultMap["unsigned_tx"].(string); ok {
+		result.UnsignedTx = utx
+	}
+	// outputs
+	if outputs, exists := resultMap["outputs"]; exists {
+		result.Outputs = outputs
+	}
+	// message
+	if msg, ok := resultMap["message"].(string); ok {
+		result.Message = msg
+	}
+	// compute_info（可选）
+	if ci, exists := resultMap["compute_info"]; exists {
+		result.ComputeInfo = ci
+	}
+
+	return result, nil
+}

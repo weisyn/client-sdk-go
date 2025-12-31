@@ -15,7 +15,7 @@ import (
 //
 // **架构说明**：
 // AddLiquidity 业务语义在 SDK 层，通过调用 AMM 合约的 addLiquidity 方法实现。
-// 
+//
 // **流程**：
 // 1. 确定 AMM 合约地址（需要从配置或参数获取）
 // 2. 构建 addLiquidity 方法参数（通过 payload）
@@ -61,7 +61,7 @@ func (s *marketService) addLiquidity(ctx context.Context, req *AddLiquidityReque
 			"amountB": req.AmountB,
 		},
 	}
-	
+
 	payloadBase64, err := utils.BuildAndEncodePayload(payloadOptions)
 	if err != nil {
 		return nil, fmt.Errorf("build payload failed: %w", err)
@@ -69,10 +69,10 @@ func (s *marketService) addLiquidity(ctx context.Context, req *AddLiquidityReque
 
 	// 6. 调用 wes_callContract API，设置 return_unsigned_tx=true
 	callContractParams := map[string]interface{}{
-		"content_hash":      hex.EncodeToString(ammContractHash),
-		"method":            "addLiquidity",
-		"params":            []uint64{}, // WASM 原生参数（空，使用 payload）
-		"payload":           payloadBase64,
+		"content_hash":       hex.EncodeToString(ammContractHash),
+		"method":             "addLiquidity",
+		"params":             []uint64{}, // WASM 原生参数（空，使用 payload）
+		"payload":            payloadBase64,
 		"return_unsigned_tx": true,
 	}
 
@@ -160,7 +160,7 @@ func (s *marketService) validateAddLiquidityRequest(req *AddLiquidityRequest) er
 //
 // **架构说明**：
 // RemoveLiquidity 业务语义在 SDK 层，通过调用 AMM 合约的 removeLiquidity 方法实现。
-// 
+//
 // **流程**：
 // 1. 确定 AMM 合约地址（需要从配置或参数获取）
 // 2. 构建 removeLiquidity 方法参数（通过 payload）
@@ -204,7 +204,7 @@ func (s *marketService) removeLiquidity(ctx context.Context, req *RemoveLiquidit
 			"amount":      req.Amount,
 		},
 	}
-	
+
 	payloadBase64, err := utils.BuildAndEncodePayload(payloadOptions)
 	if err != nil {
 		return nil, fmt.Errorf("build payload failed: %w", err)
@@ -212,10 +212,10 @@ func (s *marketService) removeLiquidity(ctx context.Context, req *RemoveLiquidit
 
 	// 6. 调用 wes_callContract API，设置 return_unsigned_tx=true
 	callContractParams := map[string]interface{}{
-		"content_hash":      hex.EncodeToString(ammContractHash),
-		"method":            "removeLiquidity",
-		"params":            []uint64{}, // WASM 原生参数（空，使用 payload）
-		"payload":           payloadBase64,
+		"content_hash":       hex.EncodeToString(ammContractHash),
+		"method":             "removeLiquidity",
+		"params":             []uint64{}, // WASM 原生参数（空，使用 payload）
+		"payload":            payloadBase64,
 		"return_unsigned_tx": true,
 	}
 
@@ -266,7 +266,7 @@ func (s *marketService) removeLiquidity(ctx context.Context, req *RemoveLiquidit
 	if err == nil && parsedTx != nil {
 		// 查找返回给用户的输出（owner 是流动性提供者地址）
 		userOutputs := utils.FindOutputsByOwner(parsedTx.Outputs, req.From)
-		
+
 		// 分别汇总 TokenA 和 TokenB 的金额
 		// 注意：需要从请求中获取 TokenA 和 TokenB，但当前 RemoveLiquidityRequest 没有这些字段
 		// 简化处理：汇总所有代币输出
@@ -323,4 +323,3 @@ func (s *marketService) validateRemoveLiquidityRequest(req *RemoveLiquidityReque
 
 	return nil
 }
-

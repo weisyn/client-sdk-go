@@ -90,10 +90,10 @@ graph TB
     
     subgraph API_GATEWAY["🌐 API 网关层"]
         direction LR
-        JSONRPC["JSON-RPC 2.0<br/>:8545"]
+        JSONRPC["JSON-RPC 2.0<br/>:28680"]
         HTTP["HTTP REST<br/>/api/v1/*"]
-        GRPC["gRPC<br/>:9090"]
-        WS["WebSocket<br/>:8081"]
+        GRPC["gRPC<br/>:28682"]
+        WS["WebSocket<br/>:28681"]
     end
     
     subgraph BIZ_LAYER["💼 业务服务层"]

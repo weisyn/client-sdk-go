@@ -122,11 +122,11 @@ func buildProposeDraft(
 
 	// 6. 构建提案数据（存储在 StateOutput 中）
 	proposalData := map[string]interface{}{
-		"type":         "proposal",
-		"title":        title,
-		"description":  description,
+		"type":          "proposal",
+		"title":         title,
+		"description":   description,
 		"voting_period": votingPeriod,
-		"proposer":     hex.EncodeToString(proposerAddress),
+		"proposer":      hex.EncodeToString(proposerAddress),
 	}
 	proposalDataJSON, err := json.Marshal(proposalData)
 	if err != nil {
@@ -168,8 +168,8 @@ func buildProposeDraft(
 	proposalOutput := map[string]interface{}{
 		"type":     "state",
 		"owner":    hex.EncodeToString(proposerAddress),
-		"amount":   "0",    // 状态输出本身不携带资产金额
-		"token_id": "",     // 状态输出不关联 token
+		"amount":   "0", // 状态输出本身不携带资产金额
+		"token_id": "",  // 状态输出不关联 token
 		"metadata": stateMetadata,
 		// 提案内容仍然保留在 data 字段，便于后续扩展或调试（节点目前不强制要求）
 		"data": string(proposalDataJSON),
@@ -273,18 +273,18 @@ func buildProposeTransaction(
 	}
 
 	thresholdLock := map[string]interface{}{
-		"type":         "threshold_lock",
+		"type":          "threshold_lock",
 		"required_keys": requiredKeys,
-		"threshold":    threshold,
+		"threshold":     threshold,
 	}
 
 	// 7. 构建提案数据（存储在 StateOutput 中）
 	proposalData := map[string]interface{}{
-		"type":         "proposal",
-		"title":        title,
-		"description":  description,
+		"type":          "proposal",
+		"title":         title,
+		"description":   description,
 		"voting_period": votingPeriod,
-		"proposer":     hex.EncodeToString(proposerAddress),
+		"proposer":      hex.EncodeToString(proposerAddress),
 	}
 	proposalDataJSON, err := json.Marshal(proposalData)
 	if err != nil {
@@ -370,7 +370,7 @@ func buildVoteDraft(
 	client client.Client,
 	voterAddress []byte,
 	proposalID []byte, // ProposalID（outpoint 格式：txHash:index）
-	choice int,        // 投票选择（1=支持, 0=反对, -1=弃权）
+	choice int, // 投票选择（1=支持, 0=反对, -1=弃权）
 	voteWeight uint64, // 投票权重
 ) ([]byte, uint32, error) {
 	// 0. 参数验证
@@ -448,11 +448,11 @@ func buildVoteDraft(
 
 	// 6. 构建投票数据（存储在 StateOutput 中）
 	voteData := map[string]interface{}{
-		"type":       "vote",
+		"type":        "vote",
 		"proposal_id": string(proposalID),
-		"choice":     choice,
-		"weight":     voteWeight,
-		"voter":     hex.EncodeToString(voterAddress),
+		"choice":      choice,
+		"weight":      voteWeight,
+		"voter":       hex.EncodeToString(voterAddress),
 	}
 	voteDataJSON, err := json.Marshal(voteData)
 	if err != nil {
@@ -461,7 +461,7 @@ func buildVoteDraft(
 
 	// 7. 构建 SingleKeyLock 锁定条件
 	singleKeyLock := map[string]interface{}{
-		"type":            "single_key_lock",
+		"type":             "single_key_lock",
 		"required_address": hex.EncodeToString(voterAddress),
 	}
 
@@ -513,7 +513,7 @@ func buildVoteTransaction(
 	client client.Client,
 	voterAddress []byte,
 	proposalID []byte, // ProposalID（outpoint 格式：txHash:index）
-	choice int,        // 投票选择（1=支持, 0=反对, -1=弃权）
+	choice int, // 投票选择（1=支持, 0=反对, -1=弃权）
 	voteWeight uint64, // 投票权重
 ) ([]byte, error) {
 	// 1. 将地址转换为 Base58 格式
@@ -575,11 +575,11 @@ func buildVoteTransaction(
 
 	// 6. 构建投票数据（存储在 StateOutput 中）
 	voteData := map[string]interface{}{
-		"type":       "vote",
+		"type":        "vote",
 		"proposal_id": string(proposalID),
-		"choice":     choice,
-		"weight":     voteWeight,
-		"voter":     hex.EncodeToString(voterAddress),
+		"choice":      choice,
+		"weight":      voteWeight,
+		"voter":       hex.EncodeToString(voterAddress),
 	}
 	voteDataJSON, err := json.Marshal(voteData)
 	if err != nil {
@@ -588,7 +588,7 @@ func buildVoteTransaction(
 
 	// 7. 构建 SingleKeyLock 锁定条件
 	singleKeyLock := map[string]interface{}{
-		"type":            "single_key_lock",
+		"type":             "single_key_lock",
 		"required_address": hex.EncodeToString(voterAddress),
 	}
 
@@ -758,17 +758,17 @@ func buildUpdateParamDraft(
 	}
 
 	thresholdLock := map[string]interface{}{
-		"type":         "threshold_lock",
+		"type":          "threshold_lock",
 		"required_keys": requiredKeys,
-		"threshold":    threshold,
+		"threshold":     threshold,
 	}
 
 	// 7. 构建参数更新数据（存储在 StateOutput 中）
 	paramUpdateData := map[string]interface{}{
-		"type":       "param_update",
-		"param_key":  paramKey,
+		"type":        "param_update",
+		"param_key":   paramKey,
 		"param_value": paramValue,
-		"proposer":   hex.EncodeToString(proposerAddress),
+		"proposer":    hex.EncodeToString(proposerAddress),
 	}
 	paramUpdateDataJSON, err := json.Marshal(paramUpdateData)
 	if err != nil {
@@ -897,17 +897,17 @@ func buildUpdateParamTransaction(
 	}
 
 	thresholdLock := map[string]interface{}{
-		"type":         "threshold_lock",
+		"type":          "threshold_lock",
 		"required_keys": requiredKeys,
-		"threshold":    threshold,
+		"threshold":     threshold,
 	}
 
 	// 7. 构建参数更新数据（存储在 StateOutput 中）
 	paramUpdateData := map[string]interface{}{
-		"type":       "param_update",
-		"param_key":  paramKey,
+		"type":        "param_update",
+		"param_key":   paramKey,
 		"param_value": paramValue,
-		"proposer":   hex.EncodeToString(proposerAddress),
+		"proposer":    hex.EncodeToString(proposerAddress),
 	}
 	paramUpdateDataJSON, err := json.Marshal(paramUpdateData)
 	if err != nil {
@@ -984,4 +984,3 @@ func getString(m map[string]interface{}, key string) string {
 	}
 	return ""
 }
-

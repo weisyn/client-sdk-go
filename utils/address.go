@@ -124,4 +124,3 @@ func AddressBase58ToHex(base58Addr string) (string, error) {
 	// 转换为十六进制，带 0x 前缀
 	return fmt.Sprintf("0x%x", addressBytes), nil
 }
-

@@ -32,13 +32,13 @@ const (
 
 // ResourceInfo 资源信息（协议级）
 type ResourceInfo struct {
-	ResourceID        [32]byte            // 32 字节哈希（资源 ID）
-	ResourceType      ResourceType         // 'contract' | 'model' | 'static'
-	ContentHash       [32]byte            // 32 字节哈希
-	Size              int64               // 字节数
-	MimeType          string              // 静态资源的 MIME 类型
+	ResourceID        [32]byte           // 32 字节哈希（资源 ID）
+	ResourceType      ResourceType       // 'contract' | 'model' | 'static'
+	ContentHash       [32]byte           // 32 字节哈希
+	Size              int64              // 字节数
+	MimeType          string             // 静态资源的 MIME 类型
 	LockingConditions []LockingCondition // 原始锁定条件（协议模型）
-	CreatedAt         time.Time           // 创建时间（从 TX 推导）
+	CreatedAt         time.Time          // 创建时间（从 TX 推导）
 
 	// 元数据字段（来自链上，可能为空）
 	Name             string                 // 资源名称（来自链上 metadata）
@@ -107,8 +107,8 @@ type EventFilters struct {
 
 // NodeInfo 节点信息
 type NodeInfo struct {
-	RPCVersion string
-	ChainID    string
+	RPCVersion  string
+	ChainID     string
 	BlockHeight uint64
 }
 
@@ -123,3 +123,80 @@ type SubmitTxResult struct {
 	Reason   string
 }
 
+// ========== 新增类型定义（API 补齐） ==========
+
+// BlockInfo 区块信息
+type BlockInfo struct {
+	Height       uint64        // 区块高度
+	Hash         []byte        // 区块哈希（32字节）
+	ParentHash   []byte        // 父区块哈希（32字节）
+	Timestamp    time.Time     // 区块时间戳
+	StateRoot    []byte        // 状态根（32字节）
+	Difficulty   string        // 难度
+	Miner        string        // 矿工地址
+	Size         int           // 区块大小（字节）
+	TxHashes     []string      // 交易哈希列表（fullTx=false 时）
+	Transactions []interface{} // 完整交易列表（fullTx=true 时）
+	TxCount      int           // 交易数量
+}
+
+// TransactionReceipt 交易收据
+type TransactionReceipt struct {
+	TxHash              string // 交易哈希（0x + 64hex）
+	TxIndex             uint32 // tx_index
+	BlockHeight         uint64 // block_height
+	BlockHash           []byte // block_hash（32字节）
+	Status              string // status："0x1" | "0x0"
+	StatusReason        string // statusReason（可选）
+	ExecutionResultHash []byte // execution_result_hash（可选，32字节）
+	StateRoot           []byte // state_root（可选，32字节）
+	Timestamp           uint64 // timestamp（秒）
+}
+
+// FeeEstimate 费用估算结果
+type FeeEstimate struct {
+	EstimatedFee uint64 // estimated_fee
+	FeeRate      string // fee_rate（例如 "3 bps (0.03%)"）
+	NumInputs    int    // num_inputs
+	NumOutputs   int    // num_outputs
+}
+
+// SyncStatus 同步状态
+type SyncStatus struct {
+	Syncing       bool    // 是否正在同步
+	CurrentHeight uint64  // 当前高度
+	HighestHeight uint64  // 网络最高高度
+	StartingBlock uint64  // 同步起始区块
+	Progress      float64 // 同步进度（0-1）
+}
+
+// TokenBalance 代币余额
+type TokenBalance struct {
+	Address         string // 查询的地址
+	ContractHash    string // 合约内容哈希
+	ContractAddress string // 合约地址
+	TokenID         string // 代币 ID
+	Balance         string // 余额（字符串格式，支持大数）
+	BalanceUint64   uint64 // 余额（uint64 格式，可能溢出）
+	UTXOCount       int    // UTXO 数量
+	Height          uint64 // 查询时的区块高度
+}
+
+// AIModelCallRequest AI 模型调用请求
+type AIModelCallRequest struct {
+	PrivateKey       string                   // 可选：return_unsigned_tx=false 时必需
+	ModelHash        []byte                   // 模型内容哈希（32字节）
+	Inputs           []map[string]interface{} // 张量输入列表（与节点 API 对齐）
+	ReturnUnsignedTx bool                     // true 时仅返回 unsigned_tx，不提交
+	PaymentToken     string                   // 可选：支付代币（Phase 3）
+}
+
+// AIModelCallResult AI 模型调用结果
+type AIModelCallResult struct {
+	Success     bool        // success
+	TxHash      string      // tx_hash（注意：节点在不同分支可能返回 0x 前缀或不带前缀）
+	UnsignedTx  string      // unsigned_tx（hex，不带 0x）
+	Outputs     interface{} // outputs（推理结果张量列表）
+	Message     string      // message
+	ComputeInfo interface{} // compute_info（可选）
+}

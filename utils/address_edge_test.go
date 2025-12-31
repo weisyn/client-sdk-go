@@ -11,39 +11,39 @@ import (
 // TestAddressBytesToBase58_EdgeCases 测试地址转换的边界情况
 func TestAddressBytesToBase58_EdgeCases(t *testing.T) {
 	tests := []struct {
-		name        string
+		name         string
 		addressBytes []byte
-		wantErr     bool
+		wantErr      bool
 	}{
 		{
-			name:        "all zeros",
+			name:         "all zeros",
 			addressBytes: make([]byte, 20),
-			wantErr:     false,
+			wantErr:      false,
 		},
 		{
-			name:        "all ones",
+			name:         "all ones",
 			addressBytes: make([]byte, 20),
-			wantErr:     false,
+			wantErr:      false,
 		},
 		{
-			name:        "max bytes",
+			name:         "max bytes",
 			addressBytes: []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
-			wantErr:     false,
+			wantErr:      false,
 		},
 		{
-			name:        "nil address",
+			name:         "nil address",
 			addressBytes: nil,
-			wantErr:     true,
+			wantErr:      true,
 		},
 		{
-			name:        "very large address (100 bytes)",
+			name:         "very large address (100 bytes)",
 			addressBytes: make([]byte, 100),
-			wantErr:     true,
+			wantErr:      true,
 		},
 		{
-			name:        "single byte",
+			name:         "single byte",
 			addressBytes: []byte{0x01},
-			wantErr:     true,
+			wantErr:      true,
 		},
 	}
 
@@ -185,7 +185,7 @@ func TestAddressHexToBase58_EdgeCases(t *testing.T) {
 // TestAddressRoundTrip_MultipleAddresses 测试多个地址的往返一致性
 func TestAddressRoundTrip_MultipleAddresses(t *testing.T) {
 	testAddresses := [][]byte{
-		make([]byte, 20),                    // 全零
+		make([]byte, 20), // 全零
 		{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}, // 全1
 		{0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC}, // 随机
 	}
@@ -223,4 +223,3 @@ func makeHexStringUpper(bytes int) string {
 	}
 	return result
 }
-

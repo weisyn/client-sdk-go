@@ -4,22 +4,22 @@ package client
 type Config struct {
 	// Endpoint 节点端点地址
 	Endpoint string
-	
+
 	// Protocol 协议类型
 	Protocol Protocol
-	
+
 	// Timeout 超时时间（秒）
 	Timeout int
-	
+
 	// TLS 配置
 	TLS *TLSConfig
-	
+
 	// 调试模式
 	Debug bool
-	
+
 	// 日志器（可选）
 	Logger Logger
-	
+
 	// Retry 重试配置（可选）
 	Retry *RetryConfig
 }
@@ -52,10 +52,9 @@ type Logger interface {
 // DefaultConfig 返回默认配置
 func DefaultConfig() *Config {
 	return &Config{
-		Endpoint: "http://localhost:8545",
+		Endpoint: "http://localhost:28680/jsonrpc",
 		Protocol: ProtocolHTTP,
 		Timeout:  30,
 		Debug:    false,
 	}
 }
-

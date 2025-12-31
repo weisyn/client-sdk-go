@@ -89,10 +89,10 @@ func (s *stakingService) Slash(ctx context.Context, req *SlashRequest, wallets .
 
 // StakeRequest 质押请求
 type StakeRequest struct {
-	From         []byte // 质押者地址（20字节）
+	From          []byte // 质押者地址（20字节）
 	ValidatorAddr []byte // 验证者地址（20字节）
-	Amount       uint64 // 质押金额
-	LockBlocks   uint64 // 锁定期（区块数）
+	Amount        uint64 // 质押金额
+	LockBlocks    uint64 // 锁定期（区块数）
 }
 
 // StakeResult 质押结果
@@ -111,17 +111,17 @@ type UnstakeRequest struct {
 
 // UnstakeResult 解除质押结果
 type UnstakeResult struct {
-	TxHash      string // 交易哈希
+	TxHash        string // 交易哈希
 	UnstakeAmount uint64 // 解除质押金额
 	RewardAmount  uint64 // 奖励金额
-	Success     bool   // 是否成功
+	Success       bool   // 是否成功
 }
 
 // DelegateRequest 委托请求
 type DelegateRequest struct {
-	From         []byte // 委托者地址（20字节）
+	From          []byte // 委托者地址（20字节）
 	ValidatorAddr []byte // 验证者地址（20字节）
-	Amount       uint64 // 委托金额
+	Amount        uint64 // 委托金额
 }
 
 // DelegateResult 委托结果
@@ -153,16 +153,16 @@ type ClaimRewardRequest struct {
 
 // ClaimRewardResult 领取奖励结果
 type ClaimRewardResult struct {
-	TxHash      string // 交易哈希
+	TxHash       string // 交易哈希
 	RewardAmount uint64 // 奖励金额
-	Success     bool   // 是否成功
+	Success      bool   // 是否成功
 }
 
 // SlashRequest 罚没请求
 type SlashRequest struct {
 	ValidatorAddr []byte // 被罚没的验证者地址
-	Amount       uint64 // 罚没金额
-	Reason       string // 罚没原因
+	Amount        uint64 // 罚没金额
+	Reason        string // 罚没原因
 }
 
 // SlashResult 罚没结果
@@ -170,4 +170,3 @@ type SlashResult struct {
 	TxHash  string // 交易哈希
 	Success bool   // 是否成功
 }
-

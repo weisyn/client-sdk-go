@@ -77,7 +77,7 @@ func NewWalletFromPrivateKey(privateKeyHex string) (Wallet, error) {
 	}
 
 	address := deriveAddress(privateKey)
-	
+
 	return &SimpleWallet{
 		privateKey: privateKey,
 		address:    address,
@@ -122,7 +122,7 @@ func (w *SimpleWallet) SignHash(hash []byte) ([]byte, error) {
 func (w *SimpleWallet) SignMessage(msg []byte) ([]byte, error) {
 	// 1. 计算消息哈希
 	hash := sha256.Sum256(msg)
-	
+
 	// 2. 签名哈希
 	return w.SignHash(hash[:])
 }
@@ -163,4 +163,3 @@ func hexRemovePrefix(hexStr string) string {
 	}
 	return hexStr
 }
-

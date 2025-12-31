@@ -46,13 +46,13 @@ type TransactionFilters struct {
 
 // TransactionInfo 交易信息
 type TransactionInfo struct {
-	TxID        string                 // 交易哈希
-	BlockHeight *uint64                // 区块高度（如果已确认）
-	BlockHash   string                 // 区块哈希（如果已确认）
-	Status      string                 // 交易状态："pending" | "confirmed" | "failed"
-	Inputs      []interface{}          // 交易输入（协议级）
-	Outputs     []interface{}          // 交易输出（协议级）
-	Timestamp   time.Time              // 时间戳
+	TxID        string        // 交易哈希
+	BlockHeight *uint64       // 区块高度（如果已确认）
+	BlockHash   string        // 区块哈希（如果已确认）
+	Status      string        // 交易状态："pending" | "confirmed" | "failed"
+	Inputs      []interface{} // 交易输入（协议级）
+	Outputs     []interface{} // 交易输出（协议级）
+	Timestamp   time.Time     // 时间戳
 }
 
 // SubmitTxResult 交易提交结果
@@ -100,7 +100,7 @@ func (s *transactionService) GetTransactionHistory(ctx context.Context, filters 
 		if filters.Limit > 0 {
 			filterMap["limit"] = filters.Limit
 		}
-		if filters.Offset > 0 {
+		if filters.Offset >= 0 { // 允许 offset 为 0（与 client-sdk-js 保持一致）
 			filterMap["offset"] = filters.Offset
 		}
 	}
@@ -258,5 +258,3 @@ func encodeTransaction(tx interface{}) (string, error) {
 	// 对象格式暂不支持（需要 protobuf 序列化）
 	return "", fmt.Errorf("transaction object encoding not supported. Please provide a signed transaction hex string")
 }
-
-

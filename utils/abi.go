@@ -19,7 +19,7 @@ type BuildPayloadOptions struct {
 	Amount         uint64 // 转账金额
 	IncludeTokenID bool   // 是否包含代币ID（token_id）
 	TokenID        []byte // 代币ID（32字节）
-	
+
 	// 扩展字段（Extension Fields）- 方法参数
 	MethodParams map[string]interface{} // 方法参数（键值对）
 }
@@ -92,4 +92,3 @@ func BuildAndEncodePayload(options BuildPayloadOptions) (string, error) {
 
 	return payloadBase64, nil
 }
-

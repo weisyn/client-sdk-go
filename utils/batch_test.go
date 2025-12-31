@@ -18,20 +18,20 @@ func TestBatchQuery(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:  "empty items",
-			items: []int{},
+			name:   "empty items",
+			items:  []int{},
 			config: DefaultBatchConfig(),
 		},
 		{
-			name:  "single item",
-			items: []int{1},
+			name:   "single item",
+			items:  []int{1},
 			config: DefaultBatchConfig(),
 		},
 		{
 			name:  "multiple items",
 			items: []int{1, 2, 3, 4, 5},
 			config: &BatchConfig{
-				BatchSize:  2,
+				BatchSize:   2,
 				Concurrency: 2,
 			},
 		},
@@ -39,7 +39,7 @@ func TestBatchQuery(t *testing.T) {
 			name:  "with progress callback",
 			items: []int{1, 2, 3, 4, 5},
 			config: &BatchConfig{
-				BatchSize:  2,
+				BatchSize:   2,
 				Concurrency: 2,
 				OnProgress: func(progress BatchProgress) {
 					// 验证进度信息
@@ -121,29 +121,29 @@ func TestParallelExecute(t *testing.T) {
 	ctx := context.Background()
 
 	tests := []struct {
-		name       string
-		items      []int
+		name        string
+		items       []int
 		concurrency int
-		wantErr    bool
+		wantErr     bool
 	}{
 		{
-			name:       "empty items",
-			items:      []int{},
+			name:        "empty items",
+			items:       []int{},
 			concurrency: 5,
 		},
 		{
-			name:       "single item",
-			items:      []int{1},
+			name:        "single item",
+			items:       []int{1},
 			concurrency: 5,
 		},
 		{
-			name:       "multiple items",
-			items:      []int{1, 2, 3, 4, 5},
+			name:        "multiple items",
+			items:       []int{1, 2, 3, 4, 5},
 			concurrency: 3,
 		},
 		{
-			name:       "high concurrency",
-			items:      []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+			name:        "high concurrency",
+			items:       []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
 			concurrency: 2,
 		},
 	}
@@ -191,33 +191,33 @@ func TestParallelExecute_WithErrors(t *testing.T) {
 
 func TestBatchArray(t *testing.T) {
 	tests := []struct {
-		name      string
-		array     []int
-		batchSize int
+		name        string
+		array       []int
+		batchSize   int
 		wantBatches int
 	}{
 		{
-			name:       "empty array",
-			array:      []int{},
-			batchSize:  5,
+			name:        "empty array",
+			array:       []int{},
+			batchSize:   5,
 			wantBatches: 0,
 		},
 		{
-			name:       "single batch",
-			array:      []int{1, 2, 3},
-			batchSize:  5,
+			name:        "single batch",
+			array:       []int{1, 2, 3},
+			batchSize:   5,
 			wantBatches: 1,
 		},
 		{
-			name:       "multiple batches",
-			array:      []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-			batchSize:  3,
+			name:        "multiple batches",
+			array:       []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+			batchSize:   3,
 			wantBatches: 4,
 		},
 		{
-			name:       "exact batch size",
-			array:      []int{1, 2, 3, 4, 5},
-			batchSize:  5,
+			name:        "exact batch size",
+			array:       []int{1, 2, 3, 4, 5},
+			batchSize:   5,
 			wantBatches: 1,
 		},
 	}
@@ -250,4 +250,3 @@ func TestDefaultBatchConfig(t *testing.T) {
 		t.Errorf("DefaultBatchConfig() Concurrency = %d, want 5", config.Concurrency)
 	}
 }
-

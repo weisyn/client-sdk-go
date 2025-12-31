@@ -6,29 +6,29 @@ import (
 
 func TestAddressBytesToBase58(t *testing.T) {
 	tests := []struct {
-		name        string
+		name         string
 		addressBytes []byte
-		wantErr     bool
+		wantErr      bool
 	}{
 		{
-			name:        "valid 20-byte address",
+			name:         "valid 20-byte address",
 			addressBytes: make([]byte, 20),
-			wantErr:     false,
+			wantErr:      false,
 		},
 		{
-			name:        "invalid length - 19 bytes",
+			name:         "invalid length - 19 bytes",
 			addressBytes: make([]byte, 19),
-			wantErr:     true,
+			wantErr:      true,
 		},
 		{
-			name:        "invalid length - 21 bytes",
+			name:         "invalid length - 21 bytes",
 			addressBytes: make([]byte, 21),
-			wantErr:     true,
+			wantErr:      true,
 		},
 		{
-			name:        "empty address",
+			name:         "empty address",
 			addressBytes: []byte{},
-			wantErr:     true,
+			wantErr:      true,
 		},
 	}
 
@@ -59,24 +59,24 @@ func TestAddressBase58ToBytes(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
+		name       string
 		base58Addr string
-		wantErr   bool
+		wantErr    bool
 	}{
 		{
-			name:      "valid Base58 address",
+			name:       "valid Base58 address",
 			base58Addr: validBase58,
-			wantErr:   false,
+			wantErr:    false,
 		},
 		{
-			name:      "invalid Base58 - empty string",
+			name:       "invalid Base58 - empty string",
 			base58Addr: "",
-			wantErr:   true,
+			wantErr:    true,
 		},
 		{
-			name:      "invalid Base58 - invalid characters",
+			name:       "invalid Base58 - invalid characters",
 			base58Addr: "0OIl",
-			wantErr:   true,
+			wantErr:    true,
 		},
 	}
 
@@ -175,19 +175,19 @@ func TestAddressBase58ToHex(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
+		name       string
 		base58Addr string
-		wantErr   bool
+		wantErr    bool
 	}{
 		{
-			name:      "valid Base58 address",
+			name:       "valid Base58 address",
 			base58Addr: validBase58,
-			wantErr:   false,
+			wantErr:    false,
 		},
 		{
-			name:      "invalid Base58 - empty string",
+			name:       "invalid Base58 - empty string",
 			base58Addr: "",
-			wantErr:   true,
+			wantErr:    true,
 		},
 	}
 
@@ -250,4 +250,3 @@ func normalizeHex(hex string) string {
 	}
 	return "0x" + hex
 }
-

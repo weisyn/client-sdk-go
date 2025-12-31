@@ -105,4 +105,3 @@ func (s *governanceService) Vote(ctx context.Context, req *VoteRequest, wallets 
 func (s *governanceService) UpdateParam(ctx context.Context, req *UpdateParamRequest, wallets ...wallet.Wallet) (*UpdateParamResult, error) {
 	return s.updateParam(ctx, req, wallets...)
 }
-

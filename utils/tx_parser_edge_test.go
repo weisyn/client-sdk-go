@@ -9,49 +9,49 @@ import (
 // TestParseOwnerAddress_EdgeCases 测试地址解析的边界情况
 func TestParseOwnerAddress_EdgeCases(t *testing.T) {
 	tests := []struct {
-		name    string
+		name     string
 		ownerStr string
-		wantLen int
+		wantLen  int
 	}{
 		{
-			name:    "Base64 with padding",
+			name:     "Base64 with padding",
 			ownerStr: base64.StdEncoding.EncodeToString(make([]byte, 20)),
-			wantLen: 20,
+			wantLen:  20,
 		},
 		{
-			name:    "Base64 without padding",
+			name:     "Base64 without padding",
 			ownerStr: base64.RawStdEncoding.EncodeToString(make([]byte, 20)),
-			wantLen: 20,
+			wantLen:  20,
 		},
 		{
-			name:    "hex with uppercase",
+			name:     "hex with uppercase",
 			ownerStr: "0x" + hex.EncodeToString(make([]byte, 20)),
-			wantLen: 20,
+			wantLen:  20,
 		},
 		{
-			name:    "hex with mixed case",
+			name:     "hex with mixed case",
 			ownerStr: "0xAaBbCcDdEeFf1122334455667788990011223344",
-			wantLen: 20,
+			wantLen:  20,
 		},
 		{
-			name:    "Base64 wrong length (19 bytes)",
+			name:     "Base64 wrong length (19 bytes)",
 			ownerStr: base64.StdEncoding.EncodeToString(make([]byte, 19)),
-			wantLen: 0,
+			wantLen:  0,
 		},
 		{
-			name:    "Base64 wrong length (21 bytes)",
+			name:     "Base64 wrong length (21 bytes)",
 			ownerStr: base64.StdEncoding.EncodeToString(make([]byte, 21)),
-			wantLen: 0,
+			wantLen:  0,
 		},
 		{
-			name:    "hex wrong length (19 bytes)",
+			name:     "hex wrong length (19 bytes)",
 			ownerStr: hex.EncodeToString(make([]byte, 19)),
-			wantLen: 0,
+			wantLen:  0,
 		},
 		{
-			name:    "hex wrong length (21 bytes)",
+			name:     "hex wrong length (21 bytes)",
 			ownerStr: hex.EncodeToString(make([]byte, 21)),
-			wantLen: 0,
+			wantLen:  0,
 		},
 	}
 
@@ -200,16 +200,16 @@ func TestSumAmountsByToken_EdgeCases(t *testing.T) {
 // TestFindOutputsByType_EdgeCases 测试按类型查找输出的边界情况
 func TestFindOutputsByType_EdgeCases(t *testing.T) {
 	tests := []struct {
-		name      string
-		outputs   []ParsedOutput
+		name       string
+		outputs    []ParsedOutput
 		outputType string
-		wantLen   int
+		wantLen    int
 	}{
 		{
-			name:      "empty outputs",
-			outputs:   []ParsedOutput{},
+			name:       "empty outputs",
+			outputs:    []ParsedOutput{},
 			outputType: "asset",
-			wantLen:   0,
+			wantLen:    0,
 		},
 		{
 			name: "no matching type",
@@ -218,7 +218,7 @@ func TestFindOutputsByType_EdgeCases(t *testing.T) {
 				{Index: 1, Type: "state"},
 			},
 			outputType: "resource",
-			wantLen:   0,
+			wantLen:    0,
 		},
 		{
 			name: "all matching type",
@@ -228,7 +228,7 @@ func TestFindOutputsByType_EdgeCases(t *testing.T) {
 				{Index: 2, Type: "asset"},
 			},
 			outputType: "asset",
-			wantLen:   3,
+			wantLen:    3,
 		},
 		{
 			name: "empty type string",
@@ -237,7 +237,7 @@ func TestFindOutputsByType_EdgeCases(t *testing.T) {
 				{Index: 1, Type: "asset"},
 			},
 			outputType: "",
-			wantLen:   1,
+			wantLen:    1,
 		},
 	}
 
@@ -300,4 +300,3 @@ func TestGetOutpoint_EdgeCases(t *testing.T) {
 		})
 	}
 }
-

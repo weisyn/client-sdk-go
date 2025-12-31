@@ -38,7 +38,7 @@ func DefaultChunkConfig() *ChunkConfig {
 	return &ChunkConfig{
 		ChunkSize:   1024 * 1024, // 1MB
 		Concurrency: 3,
-		OnProgress: nil,
+		OnProgress:  nil,
 	}
 }
 
@@ -154,11 +154,11 @@ func ProcessFileInChunks[T any](
 
 		if config.OnProgress != nil {
 			config.OnProgress(FileProgress{
-				Loaded:     int64(len(data)),
-				Total:      int64(len(data)),
-				Percentage: 100,
+				Loaded:       int64(len(data)),
+				Total:        int64(len(data)),
+				Percentage:   100,
 				CurrentChunk: 1,
-				TotalChunks: 1,
+				TotalChunks:  1,
 			})
 		}
 
@@ -181,11 +181,11 @@ func ProcessFileInChunks[T any](
 		percentage := int((completed * 100) / int64(len(chunks)))
 		if config.OnProgress != nil {
 			config.OnProgress(FileProgress{
-				Loaded:      (completed * config.ChunkSize),
-				Total:       int64(len(data)),
-				Percentage:  percentage,
+				Loaded:       (completed * config.ChunkSize),
+				Total:        int64(len(data)),
+				Percentage:   percentage,
 				CurrentChunk: int(completed),
-				TotalChunks: len(chunks),
+				TotalChunks:  len(chunks),
 			})
 		}
 	}
@@ -356,15 +356,14 @@ func ReadFileInChunks(
 		if config.OnProgress != nil {
 			percentage := int((totalRead * 100) / fileSize)
 			config.OnProgress(FileProgress{
-				Loaded:      totalRead,
-				Total:       fileSize,
-				Percentage:  percentage,
+				Loaded:       totalRead,
+				Total:        fileSize,
+				Percentage:   percentage,
 				CurrentChunk: chunkIndex,
-				TotalChunks: int((fileSize + config.ChunkSize - 1) / config.ChunkSize),
+				TotalChunks:  int((fileSize + config.ChunkSize - 1) / config.ChunkSize),
 			})
 		}
 	}
 
 	return nil
 }
-

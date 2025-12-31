@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/weisyn/client-sdk-go/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"github.com/weisyn/client-sdk-go/types"
 )
 
 // grpcClient gRPC 客户端实现
@@ -69,7 +69,7 @@ func (c *grpcClient) Call(ctx context.Context, method string, params interface{}
 	// 2. 或者通过 HTTP 适配器调用 JSON-RPC API
 	// 3. 统一使用 types.ParseProblemDetailsFromRPCError 解析错误
 	// 4. 统一使用 types.NewWesErrorFromProblemDetails 创建 WesError
-	
+
 	// 当前返回一个明确的错误，说明 gRPC 客户端尚未完全实现
 	return nil, types.CreateDefaultWesError(
 		types.ErrorCodeSDKGRPCError,
@@ -168,4 +168,3 @@ func (c *grpcClient) Close() error {
 	}
 	return nil
 }
-

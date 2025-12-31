@@ -106,9 +106,9 @@ func (s *tokenService) BatchTransfer(ctx context.Context, req *BatchTransferRequ
 
 // MintRequest 铸造请求
 type MintRequest struct {
-	To                []byte // 接收者地址（20字节）
-	Amount            uint64 // 铸造数量
-	TokenID           []byte // 代币ID（业务标识，可选）
+	To                  []byte // 接收者地址（20字节）
+	Amount              uint64 // 铸造数量
+	TokenID             []byte // 代币ID（业务标识，可选）
 	ContractContentHash []byte // 合约 contentHash（32字节，必需）
 }
 

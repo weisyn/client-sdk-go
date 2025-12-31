@@ -154,8 +154,8 @@ func (s *marketService) createVesting(ctx context.Context, req *CreateVestingReq
 
 	return &CreateVestingResult{
 		VestingID: vestingID,
-		TxHash:     sendResult.TxHash,
-		Success:    true,
+		TxHash:    sendResult.TxHash,
+		Success:   true,
 	}, nil
 }
 
@@ -187,7 +187,7 @@ func (s *marketService) validateCreateVestingRequest(req *CreateVestingRequest) 
 // **架构说明**：
 // ClaimVesting 业务语义在 SDK 层，通过查询归属 UTXO、构建交易实现。
 // 领取归属代币需要消费带有 TimeLock 的归属 UTXO（需要满足时间条件）。
-// 
+//
 // **流程**：
 // 1. 解析 VestingID（outpoint 格式：txHash:index）
 // 2. 查询归属 UTXO（通过 `wes_getUTXO`）
@@ -308,7 +308,7 @@ func (s *marketService) claimVesting(ctx context.Context, req *ClaimVestingReque
 	if err == nil && parsedTx != nil {
 		// 查找返回给用户的输出（owner 是领取者地址）
 		userOutputs := utils.FindOutputsByOwner(parsedTx.Outputs, req.From)
-		
+
 		// 汇总金额（归属代币可能是原生币或特定代币）
 		totalAmount := utils.SumAmountsByToken(userOutputs, nil)
 		if totalAmount != nil {
@@ -337,4 +337,3 @@ func (s *marketService) validateClaimVestingRequest(req *ClaimVestingRequest) er
 
 	return nil
 }
-

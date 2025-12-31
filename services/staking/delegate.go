@@ -53,8 +53,8 @@ func (s *stakingService) delegate(ctx context.Context, req *DelegateRequest, wal
 		req.From,
 		req.ValidatorAddr,
 		req.Amount,
-		0,              // expiryDurationBlocks: 0 = 永不过期
-		req.Amount,      // maxValuePerOperation: 等于委托金额
+		0,          // expiryDurationBlocks: 0 = 永不过期
+		req.Amount, // maxValuePerOperation: 等于委托金额
 	)
 	if err != nil {
 		return nil, fmt.Errorf("build delegate draft failed: %w", err)
@@ -179,7 +179,7 @@ func (s *stakingService) validateDelegateRequest(req *DelegateRequest) error {
 // **架构说明**：
 // Undelegate 业务语义在 SDK 层，通过查询委托 UTXO、构建交易实现。
 // 取消委托需要消费带有 DelegationLock 的委托 UTXO。
-// 
+//
 // **流程**：
 // 1. 调用 `buildUndelegateTransaction` 在 SDK 层构建未签名交易
 // 2. 使用 Wallet 签名未签名交易
@@ -319,7 +319,7 @@ func (s *stakingService) validateUndelegateRequest(req *UndelegateRequest) error
 // **架构说明**：
 // ClaimReward 业务语义在 SDK 层，通过查询奖励 UTXO、构建交易实现。
 // 奖励可能由合约产生，需要通过查询链上状态获取奖励 UTXO。
-// 
+//
 // **流程**：
 // 1. 查询奖励 UTXO（通过 StakeID 或 DelegateID）
 // 2. 构建交易草稿（消费奖励 UTXO，返回给用户）
@@ -440,7 +440,7 @@ func (s *stakingService) claimReward(ctx context.Context, req *ClaimRewardReques
 	if err == nil && parsedTx != nil {
 		// 查找返回给用户的输出（owner 是领取者地址）
 		userOutputs := utils.FindOutputsByOwner(parsedTx.Outputs, req.From)
-		
+
 		// 汇总原生币金额（奖励通常是原生币）
 		totalAmount := utils.SumAmountsByToken(userOutputs, nil)
 		if totalAmount != nil {
@@ -449,9 +449,9 @@ func (s *stakingService) claimReward(ctx context.Context, req *ClaimRewardReques
 	}
 
 	return &ClaimRewardResult{
-		TxHash:      sendResult.TxHash,
+		TxHash:       sendResult.TxHash,
 		RewardAmount: rewardAmount,
-		Success:     true,
+		Success:      true,
 	}, nil
 }
 
@@ -469,4 +469,3 @@ func (s *stakingService) validateClaimRewardRequest(req *ClaimRewardRequest) err
 
 	return nil
 }
-

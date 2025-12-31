@@ -19,7 +19,7 @@ import (
 // **架构说明**：
 // Vote 业务语义在 SDK 层，通过查询 UTXO、构建交易实现。
 // 投票使用 StateOutput + SingleKeyLock 锁定条件。
-// 
+//
 // **流程**：
 // 1. 调用 `buildVoteTransaction` 在 SDK 层构建未签名交易
 // 2. 使用 Wallet 签名未签名交易
@@ -191,7 +191,7 @@ func (s *governanceService) validateVoteRequest(req *VoteRequest) error {
 // **架构说明**：
 // UpdateParam 业务语义在 SDK 层，通过创建 StateOutput 实现。
 // 更新参数通常需要治理投票通过，可能需要先创建提案。
-// 
+//
 // **流程**：
 // 1. 创建参数更新 StateOutput（类似 Propose）
 // 2. 使用 Wallet 签名交易
@@ -221,7 +221,7 @@ func (s *governanceService) updateParam(ctx context.Context, req *UpdateParamReq
 	// TODO: 需要从配置或参数获取验证者地址列表
 	// 当前简化：使用提案者地址作为验证者（实际应该查询验证者列表）
 	validatorAddresses := [][]byte{req.Proposer} // 临时：使用提案者地址
-	threshold := uint32(1)                        // 临时：需要1个签名
+	threshold := uint32(1)                       // 临时：需要1个签名
 
 	draftJSON, inputIndex, err := buildUpdateParamDraft(
 		ctx,
@@ -337,4 +337,3 @@ func (s *governanceService) validateUpdateParamRequest(req *UpdateParamRequest) 
 
 	return nil
 }
-

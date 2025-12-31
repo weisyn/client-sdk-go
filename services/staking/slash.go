@@ -18,12 +18,13 @@ import (
 //
 // **未来实现路径**（需要治理规则 / Slash 合约确定后）：
 // 1. 如果链上部署了 Slash 合约：
-//    - SDK 调用 `wes_callContract` → `method: "slash"`
-//    - 参数包括：被罚验证者地址、罚没金额、证据/理由
-//    - 合约内部根据治理逻辑构建具体消费的 UTXO & 接收方
+//   - SDK 调用 `wes_callContract` → `method: "slash"`
+//   - 参数包括：被罚验证者地址、罚没金额、证据/理由
+//   - 合约内部根据治理逻辑构建具体消费的 UTXO & 接收方
+//
 // 2. 如果通过治理系统实现：
-//    - 需要多方签名（ThresholdLock）
-//    - 通过 Governance 服务创建 Slash 提案
+//   - 需要多方签名（ThresholdLock）
+//   - 通过 Governance 服务创建 Slash 提案
 //
 // **参考**：
 // - `contract-sdk-go/helpers/staking/slash.go` - 业务逻辑实现（待确定）
@@ -64,4 +65,3 @@ func (s *stakingService) validateSlashRequest(req *SlashRequest) error {
 
 	return nil
 }
-
